@@ -166,7 +166,7 @@ jobs:
           - **Support Donate.html** - PayPal donation page
 
           ### Downloads
-          - **Release.zip** - Everything in one download: ➦ [macOS-RTL-WIFI](https://github.com/chris1111/macOS-RTL-WIFI/releases/download/1.0.3/Release.zip)
+            - **Release.zip** - Everything in one download: ➦ [macOS-RTL-WIFI](https://github.com/chris1111/macOS-RTL-WIFI/releases/download/1.0.3/Release.zip)
             - macOS-RTL-WIFI.kext - the driver (inject via OpenCore or Clover)
             - Wireless USB macOS-RTL-WIFI.pkg - recommended full installer
               (OpenCore + Clover delivery to the EFI partition, StatusBarApp
