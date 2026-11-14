@@ -20,6 +20,19 @@ adapters on Intel Macs, macOS 11 Big Sur through macOS 26. Station mode,
   in this tree under `libs/kstl/` (own library, GPL-2.0). The packaging step
   uses `pkgbuild` and `pkgutil`, which ship with macOS.
 
+## Screenshot Package installer OC and Clover
+
+<img src="PICS/Screenshot-PKG.png" alt="Github Project" style="width:40%;"><img src="PICS/Screenshot-PKGClover.png" alt="Github Project" style="width:40%;">
+
+## Screenshot Package Uninstall Utility
+
+<img src="PICS/Screenshot-Uninstall.png" alt="Github Project" style="width:40%;">
+
+## Screenshot StatusBarApp
+
+<img src="PICS/Screenshot-App.png" alt="Github Project" style="width:40%;">
+
+
 ## Supported adapters — full verified Realtek USB fleet, 263 personalities
 
 The kext ships the complete verified identity catalog
