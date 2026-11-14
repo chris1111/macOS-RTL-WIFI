@@ -1,5 +1,6 @@
 # macOS-RTL-WIFI 
 Realtek RTL8188EU USB Wi-Fi driver for Intel macOS
+### Download Release ➦ [macOS-RTL-WIFI](https://github.com/chris1111/macOS-RTL-WIFI/releases)
 
 Independent macOS kernel-extension project for Realtek **RTL8188EU** USB Wi-Fi
 adapters on Intel Macs, macOS 11 Big Sur through macOS 26. Station mode,
