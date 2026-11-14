@@ -1,0 +1,154 @@
+// kstl <vector> — own kernel-safe subset, part of this project (GPL-2.0).
+// Growable buffer backed by IOMalloc/IOFree. Exception-free by design:
+// allocation failure leaves the vector in a clean empty state instead of
+// throwing. Trivially-copyable value types only (memcpy moves, trivial
+// destructors) — the driver uses it for fixed-size octet buffers.
+#ifndef KSTL_VECTOR
+#define KSTL_VECTOR
+
+#include <cstddef>
+#include <cstdint>
+#include <string.h>
+#include <type_traits>
+#include <utility>
+#include <IOKit/IOLib.h>
+
+namespace std {
+
+template <class T>
+class vector {
+public:
+    using value_type = T;
+    using size_type = size_t;
+    using difference_type = ptrdiff_t;
+    using pointer = T*;
+    using const_pointer = const T*;
+    using reference = T&;
+    using const_reference = const T&;
+    using iterator = pointer;
+    using const_iterator = const_pointer;
+
+    static_assert(is_trivially_copyable<T>::value,
+                  "kstl vector: trivially copyable value types only");
+
+    vector() noexcept : data_(nullptr), size_(0), cap_(0) {}
+    ~vector() { release(); }
+
+    vector(const vector& other) : data_(nullptr), size_(0), cap_(0) {
+        if (other.size_) reserve(other.size_);
+        if (data_) {
+            for (size_type i = 0; i < other.size_; ++i) data_[i] = other.data_[i];
+            size_ = other.size_;
+        }
+    }
+
+    vector(vector&& other) noexcept
+        : data_(other.data_), size_(other.size_), cap_(other.cap_) {
+        other.data_ = nullptr;
+        other.size_ = 0;
+        other.cap_ = 0;
+    }
+
+    vector& operator=(const vector& other) {
+        if (this != &other) {
+            vector tmp(other);
+            swap(tmp);
+        }
+        return *this;
+    }
+
+    vector& operator=(vector&& other) noexcept {
+        if (this != &other) {
+            release();
+            data_ = other.data_;
+            size_ = other.size_;
+            cap_ = other.cap_;
+            other.data_ = nullptr;
+            other.size_ = 0;
+            other.cap_ = 0;
+        }
+        return *this;
+    }
+
+    size_type size() const noexcept { return size_; }
+    bool empty() const noexcept { return size_ == 0; }
+    pointer data() noexcept { return data_; }
+    const_pointer data() const noexcept { return data_; }
+    iterator begin() noexcept { return data_; }
+    const_iterator begin() const noexcept { return data_; }
+    const_iterator cbegin() const noexcept { return data_; }
+    iterator end() noexcept { return data_ + size_; }
+    const_iterator end() const noexcept { return data_ + size_; }
+    const_iterator cend() const noexcept { return data_ + size_; }
+    reference operator[](size_type i) noexcept { return data_[i]; }
+    const_reference operator[](size_type i) const noexcept { return data_[i]; }
+
+    // Capacity is retained; only the logical size drops to zero.
+    void clear() noexcept { size_ = 0; }
+
+    void reserve(size_type n) {
+        if (n <= cap_) return;
+        size_type newCap = cap_ ? cap_ : 16;
+        while (newCap < n) newCap *= 2;
+        if (newCap > SIZE_MAX / sizeof(T)) return; // keep current state
+        pointer nd = static_cast<T*>(IOMalloc(newCap * sizeof(T)));
+        if (!nd) { // allocation failure: clean empty state, no exceptions
+            release();
+            return;
+        }
+        if (size_) memcpy(nd, data_, size_ * sizeof(T));
+        if (data_) IOFree(data_, cap_ * sizeof(T));
+        data_ = nd;
+        cap_ = newCap;
+    }
+
+    // Value-initializes appended elements (T() == zero for scalars).
+    void resize(size_type n) {
+        if (n > cap_) reserve(n);
+        if (!data_ || n > cap_) { size_ = 0; return; }
+        for (size_type i = size_; i < n; ++i) data_[i] = T();
+        size_ = n;
+    }
+
+    void push_back(const T& value) {
+        if (size_ == cap_) reserve(size_ + 1);
+        if (!data_) return;
+        data_[size_++] = value;
+    }
+
+    template <class I>
+    void assign(I first, I last) {
+        const size_type n = static_cast<size_type>(last - first);
+        reserve(n);
+        if (!data_ || n > cap_) return;
+        for (size_type i = 0; i < n; ++i) data_[i] = first[i];
+        size_ = n;
+    }
+
+    void swap(vector& other) noexcept {
+        pointer d = data_; data_ = other.data_; other.data_ = d;
+        size_type s = size_; size_ = other.size_; other.size_ = s;
+        size_type c = cap_; cap_ = other.cap_; other.cap_ = c;
+    }
+
+private:
+    pointer data_;
+    size_type size_;
+    size_type cap_;
+
+    void release() noexcept {
+        if (data_) IOFree(data_, cap_ * sizeof(T));
+        data_ = nullptr;
+        size_ = 0;
+        cap_ = 0;
+    }
+};
+
+template <class T>
+void swap(vector<T>& a, vector<T>& b) noexcept {
+    a.swap(b);
+}
+
+} // namespace std
+
+#endif

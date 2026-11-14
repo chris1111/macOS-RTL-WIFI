@@ -1,0 +1,951 @@
+// !$*UTF8*$!
+{
+        archiveVersion = 1;
+        classes = {};
+        objectVersion = 56;
+        objects = {
+
+/* Begin PBXBuildFile section */
+                A1E8F00D2026C0DE0A0B1F01 /* Beacon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A1E8F00D2026C0DE0A0B1F02; };
+                A1E8F00D2026C0DE0A0B1F03 /* Frame.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A1E8F00D2026C0DE0A0B1F04; };
+                A1E8F00D2026C0DE0A0B1F05 /* LinkState.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A1E8F00D2026C0DE0A0B1F06; };
+                A1E8F00D2026C0DE0A0B1F07 /* USBIDs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A1E8F00D2026C0DE0A0B1F08; };
+                326E0CA692FD9ABC595DA4FF /* Chip.c in Sources */ = {isa = PBXBuildFile; fileRef = BFCE8AD07181FB750CF897AF; };
+                5418FACD732ACDEA54AD2656 /* ChipIdentity.c in Sources */ = {isa = PBXBuildFile; fileRef = CDBED9D6145846EECEE48B57; };
+                0CBD0347C64E480F80159FFB /* DFSRegulatory.c in Sources */ = {isa = PBXBuildFile; fileRef = 9C67443D2E039BFA0D07BE08; };
+                D4C1961DB03A055CC936A173 /* DFSStation.c in Sources */ = {isa = PBXBuildFile; fileRef = BE8ED91A2A15C7E0F29984EE; };
+                321FE7B40F3E1FA1C0483D02 /* Efuse.c in Sources */ = {isa = PBXBuildFile; fileRef = 96ABDA942DEA836353E8001D; };
+                B7A13A140541556FDEC954B6 /* EthernetBridge.c in Sources */ = {isa = PBXBuildFile; fileRef = 8CA49F0999D4587F0B185A3D; };
+                CFC3F149CAE284CE8EF25A0D /* FCS.c in Sources */ = {isa = PBXBuildFile; fileRef = 39B2A789D07EB54CC36AFC0F; };
+                DA513D89E4300137ACDAEF58 /* Family5GHzScan.c in Sources */ = {isa = PBXBuildFile; fileRef = 9C161F485D46C088E95515B7; };
+                1D22EEBB3978EE895213B70F /* Family5GHzStation.c in Sources */ = {isa = PBXBuildFile; fileRef = 64F490290695C9FB83EBBE12; };
+                51A8019A8F4EE180DC4F0AC6 /* FamilyBackend.c in Sources */ = {isa = PBXBuildFile; fileRef = 453432F9C24B5983DCB44757; };
+                E8ADF94355CC5708A411AA89 /* FamilyRX24.c in Sources */ = {isa = PBXBuildFile; fileRef = 72EF783096B34E0FAF220B6B; };
+                2F24056AC0EE6E374B191A4E /* FamilyRadioPolicy.c in Sources */ = {isa = PBXBuildFile; fileRef = 44A9BCBB9ECD51D5AB37F0CB; };
+                67F6FC06E934DE7A37BE8906 /* Firmware.c in Sources */ = {isa = PBXBuildFile; fileRef = 51663E9331EA38C8F350E8F8; };
+                77B261F2AE79B857AF334063 /* FirmwareBoot.c in Sources */ = {isa = PBXBuildFile; fileRef = E683DCF9EC995717782A2BB3; };
+                E72999F744748F0595D2AA5E /* FrameWire.c in Sources */ = {isa = PBXBuildFile; fileRef = C8D72BF5DE0E78800DF7AAB8; };
+                8101F0C7B55BCC70CF93E395 /* HAL8812.c in Sources */ = {isa = PBXBuildFile; fileRef = BADCDACF2B2EDB3C164A1872; };
+                7F04BED672EF3DCC8C5AD182 /* LLT.c in Sources */ = {isa = PBXBuildFile; fileRef = AEF64A4C1D56B82201345001; };
+                B22F181E82436D4F9EA0550C /* LegacyFirmwareStage.c in Sources */ = {isa = PBXBuildFile; fileRef = C5F1EE3EA161A6ED18F558D7; };
+                75B6A209699624D86848845F /* MacDMA.c in Sources */ = {isa = PBXBuildFile; fileRef = 8C861BAC9436A8CDD0935C6C; };
+                ADCCB194D39D31CFCDAFA9DD /* PHYProfile.c in Sources */ = {isa = PBXBuildFile; fileRef = 76665D0866A9A932D04ABC50; };
+                5C1CD5EA7767451A19CFD9D4 /* PHYRegisters.c in Sources */ = {isa = PBXBuildFile; fileRef = 945905554AE51957A6805DD6; };
+                02A3F26FB292B2414BDF78A5 /* PowerSequence.c in Sources */ = {isa = PBXBuildFile; fileRef = FB2127A71D4E845863E610CF; };
+                D2D3D3C33688B885879E6F24 /* RFCalibration.c in Sources */ = {isa = PBXBuildFile; fileRef = 62FEDDFF7980C89A1A4F6017; };
+                4F6791EEFB0DDC03445E3DDD /* RFReadback.c in Sources */ = {isa = PBXBuildFile; fileRef = B3D0EEDE9F140EEF7F7CE731; };
+                1C398174D04E24EFD9A18DF5 /* RTL8188EUHT.c in Sources */ = {isa = PBXBuildFile; fileRef = 31C18DF3AD3EBC02BE985E0F; };
+                AF1D38B79B664EFCC3D28042 /* RTL8192CDataPath.c in Sources */ = {isa = PBXBuildFile; fileRef = 5FE8B9191D21408D85CEEDD9; };
+                D9EC44F7AF517769AD0FE237 /* RTL8192DUBoot.c in Sources */ = {isa = PBXBuildFile; fileRef = BF76176317D5A61727425B39; };
+                99B40A539E8127843E7075D4 /* RTL8192DUDataPath.c in Sources */ = {isa = PBXBuildFile; fileRef = 48EF5511F55F75D883C355C8; };
+                7C8799A2C287ED1520F0B1AA /* RTL8192DUEfuse.c in Sources */ = {isa = PBXBuildFile; fileRef = BBC128B30D46DD6F8F4B1A72; };
+                47BCCE5EB1A21BD1CDF6F868 /* RTL8192DUPHY.c in Sources */ = {isa = PBXBuildFile; fileRef = E36CF55806F4EEEEE7455000; };
+                D6C0E406C31AC4D8844E7C2C /* RTL8192DUStation.c in Sources */ = {isa = PBXBuildFile; fileRef = 772773E0727A685F7C7552A8; };
+                C89EBD10E9D8F545AB241251 /* RTL8192DUUSB.c in Sources */ = {isa = PBXBuildFile; fileRef = 7799FEC7345861011F9B6C33; };
+                ED1ACCB1EB3AD41E024CC9B0 /* RTL8192EU.c in Sources */ = {isa = PBXBuildFile; fileRef = B2B0A48B8A69C533A9C01AE1; };
+                D484B4512FE00E058F597C9C /* RTL8192EUDataPath.c in Sources */ = {isa = PBXBuildFile; fileRef = C897C0A3FFB86708E7081112; };
+                A18E0582A2F20CB3B5644ED5 /* RTL8192EUHT.c in Sources */ = {isa = PBXBuildFile; fileRef = ED9CFDF9CCAC8F49F0FFE57B; };
+                34E7688C7E1FB5C5B1D59F2E /* RTL8192EUHardware.c in Sources */ = {isa = PBXBuildFile; fileRef = 48F6DAF56B57EC1E5D71B3D7; };
+                A776DFF9B0B2B4DC710B8680 /* RTL8192FU.c in Sources */ = {isa = PBXBuildFile; fileRef = 6AA82BA4B6456C7424D5F646; };
+                B9B8EF2363FDF88C7E3FE7B6 /* RTL8192FUDataPath.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A2AB872F83F30716ED095FB; };
+                2755F54F875389909DCA9441 /* RTL8710BU.c in Sources */ = {isa = PBXBuildFile; fileRef = 96CBAFDEB2B543CF41DA1A16; };
+                6DF77E957711B246C90A0F5E /* RTL8710BUDataPath.c in Sources */ = {isa = PBXBuildFile; fileRef = 3C3E82CFFFAADD56D9F21893; };
+                647ADED4FD0F2907EAEF597C /* RTL8723BU.c in Sources */ = {isa = PBXBuildFile; fileRef = 7E9BF89B4D9D269BE930401C; };
+                DEEA0578BCE19A2491ACB76D /* RTL8723BUDataPath.c in Sources */ = {isa = PBXBuildFile; fileRef = CA2B98D6264A91232D042676; };
+                5F5293B0C7474DF6CDB5B2E8 /* RTL8812AUBoot.c in Sources */ = {isa = PBXBuildFile; fileRef = 13E429E54BC05EBBEDDBF0F6; };
+                718B704F995355A067770805 /* RTL8812AUBootstrap.c in Sources */ = {isa = PBXBuildFile; fileRef = DD6A9AD0A05903D481D4B984; };
+                46328EA5F7531A94F96188FE /* RTL8812AUDataPath.c in Sources */ = {isa = PBXBuildFile; fileRef = D870283567124D4EBF5E381A; };
+                84DB3265C50C1BF7239A8FCC /* RTL8812AUMAC.c in Sources */ = {isa = PBXBuildFile; fileRef = E9C3C2DFB66EBA1D99F86C00; };
+                D650D2DD3FEBF724D92229E7 /* RTL8812AUPHY.c in Sources */ = {isa = PBXBuildFile; fileRef = BAA4C3C4C24063E3764B9C3F; };
+                D2ABB995EC3608D15D34913F /* RTL8812AUPassive.c in Sources */ = {isa = PBXBuildFile; fileRef = AFC955B570BA595D371D9C83; };
+                808C9173A8C476CC8F66AFBF /* RTL8812AURadio.c in Sources */ = {isa = PBXBuildFile; fileRef = 82F9468ADBB7462F5ACE467D; };
+                C427C8ACBE6681744D19623E /* RTL8812AURuntime.c in Sources */ = {isa = PBXBuildFile; fileRef = 643D2609771BB2EC0352E6F2; };
+                413EF758CBCB5E416741EE8D /* RTL8812AUStation.c in Sources */ = {isa = PBXBuildFile; fileRef = 14EAF0B7953DEDE91398B2BA; };
+                5CDCCD43FFB899472F5D508B /* RTL8814AUBoot.c in Sources */ = {isa = PBXBuildFile; fileRef = 65EE87802ECC621807EA6920; };
+                F8278C32499DDFD75E9EBE33 /* RTL8814AUDataPath.c in Sources */ = {isa = PBXBuildFile; fileRef = 5242B4DFE8ECBAA54107903C; };
+                C1CCC15F007B550278C2A49E /* RTL8814AUEfuse.c in Sources */ = {isa = PBXBuildFile; fileRef = 3498C2D0E8266E9F8552DB00; };
+                320EA5E73CF0536A4184DCAB /* RTL8814AUMAC.c in Sources */ = {isa = PBXBuildFile; fileRef = 51989CA19A59581AD50FE2D1; };
+                1DF0ADA5D0E19C13E480D4A7 /* RTL8814AUPHY.c in Sources */ = {isa = PBXBuildFile; fileRef = 8E3D583DF5EE063D20A845AF; };
+                F16862694932C697F9C17110 /* RTL8814AUStation.c in Sources */ = {isa = PBXBuildFile; fileRef = D3A036443895D4DB17DDA31B; };
+                B5013AC709180FA8ECEED5A9 /* RTL8821AUCoex.c in Sources */ = {isa = PBXBuildFile; fileRef = 4C70A788070555DE0FE18BAC; };
+                86A74749EB7170A19457A95D /* RTW8814BHAL.c in Sources */ = {isa = PBXBuildFile; fileRef = 592844159132C149C28C4BBF; };
+                321C71EFFEFF30B59235F5A9 /* RTW8814BPHY.c in Sources */ = {isa = PBXBuildFile; fileRef = 2CE7F8A1C4285107E25235CA; };
+                E43FF65AC6595DA0A491727C /* RTW8814BUSBCodec.c in Sources */ = {isa = PBXBuildFile; fileRef = 61F1D73EC02CBC20984360F6; };
+                94924308381ED0BF657B43AE /* RTW88Boot.c in Sources */ = {isa = PBXBuildFile; fileRef = 0DA7CD1CC384780AD8C2161B; };
+                8BACA514692C1C94E93FC8AF /* RTW88Coex.c in Sources */ = {isa = PBXBuildFile; fileRef = 6C52BDBF9436A7D799436218; };
+                C82091FE8406AB1E45E98696 /* RTW88Firmware.c in Sources */ = {isa = PBXBuildFile; fileRef = 6C37A5721E8BB93B56951191; };
+                02462CD1574E6462C781B613 /* RTW88MAC.c in Sources */ = {isa = PBXBuildFile; fileRef = DC180452C584A2D835826E0A; };
+                F3A53E057876830ECAA7D7E3 /* RTW88PHY.c in Sources */ = {isa = PBXBuildFile; fileRef = DB0C673BEA3D9D54E6486626; };
+                7B219EDBB97B4590413DB226 /* RTW88PHYOperating.c in Sources */ = {isa = PBXBuildFile; fileRef = 762E98E193D82996BB2FEB02; };
+                FDF810177D2A6ABF9EA9D042 /* RTW88RX.c in Sources */ = {isa = PBXBuildFile; fileRef = BA13C96F9B68A1055D193816; };
+                0A8C25BC72DD686CF22C771F /* RTW88Station.c in Sources */ = {isa = PBXBuildFile; fileRef = BF3311FE9B5FE903C216DD9F; };
+                676457E21FC8E3DB963048E0 /* RTW88USBDataPath.c in Sources */ = {isa = PBXBuildFile; fileRef = 6F916F0B8C679C760D80AE27; };
+                5715844FC09405FD3DE7BF9B /* RXMonitor.c in Sources */ = {isa = PBXBuildFile; fileRef = 707B3E59DBB895558CB5E408; };
+                A1E85AE5B2A538ABA5634257 /* StationMgmt.c in Sources */ = {isa = PBXBuildFile; fileRef = E1DD8CC1C767B18CED5D732E; };
+                50C87A1BEA6935991B71B39A /* StationPort.c in Sources */ = {isa = PBXBuildFile; fileRef = 0B750DAAC518E3642A1CB624; };
+                B429600E398EAD22FDF49EE2 /* USBBulk.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DB3833C027CE09AFD73E2D8; };
+                0E0F9D3D1F0095EF856E80E5 /* USBControl.c in Sources */ = {isa = PBXBuildFile; fileRef = 5D6C98D84B3F875E52F69209; };
+                42E2CBE76DB0C3D6318EBF2D /* USBDescriptors.c in Sources */ = {isa = PBXBuildFile; fileRef = 3F336EF071620F651E707F43; };
+                8851B44F1898D96F04B771BD /* USBPackets.c in Sources */ = {isa = PBXBuildFile; fileRef = 2AA64D9D7CB90D9BE8DE4693; };
+                63D18AF8E532DA12F87B7FC5 /* USBProbe.c in Sources */ = {isa = PBXBuildFile; fileRef = CCEA2CD948BFBA1D634E328A; };
+                30A8BD171262972EC994BE84 /* USBRegisterIO.c in Sources */ = {isa = PBXBuildFile; fileRef = CF3DF196B8612AEC898552D7; };
+                B09809FEEA5FFA9F3910C1C0 /* USBWiFiFirmware.c in Sources */ = {isa = PBXBuildFile; fileRef = 0797B7CAE6AB4B9DA0D5E896; };
+                503A83D17FF6FDE09DB62F51 /* USBWiFiProfiles.c in Sources */ = {isa = PBXBuildFile; fileRef = 8838F8F401CD8C0E3833EAC8; };
+                B031019248BA209B4583C732 /* halmac_gpio_8814b.c in Sources */ = {isa = PBXBuildFile; fileRef = 939B69AE0D1ED9DE71044AF1; };
+                220DE024622720F81044AA8B /* halmac_init_8814b.c in Sources */ = {isa = PBXBuildFile; fileRef = EA893ACCB10469F128D60C58; };
+                29E57FC7598E003CBE781EFD /* halmac_pcie_8814b.c in Sources */ = {isa = PBXBuildFile; fileRef = 3FD1FFEBE2FE711612221D09; };
+                BE0D27F4E250B758C574FB7C /* halmac_phy_8814b.c in Sources */ = {isa = PBXBuildFile; fileRef = 9001A5C5AFD24BCBD1263AC4; };
+                7A7F836B6BC2A27CEF386351 /* halmac_pwr_seq_8814b.c in Sources */ = {isa = PBXBuildFile; fileRef = F018C48A8C10B67E8A31F6D1; };
+                9DB5B9EBEC4C5EAE99865241 /* halmac_sdio_8814b.c in Sources */ = {isa = PBXBuildFile; fileRef = 7440AA99B8FAE7CEAF8A2CF9; };
+                FB1091100F662B49D0057791 /* halmac_usb_8814b.c in Sources */ = {isa = PBXBuildFile; fileRef = 6F6861AFEE6DD651E0799239; };
+                8A523A24D36B3F6A9AD5619E /* halmac_bb_rf_88xx_v1.c in Sources */ = {isa = PBXBuildFile; fileRef = 5EB1D13D4C6FE8C8B1F3997E; };
+                C7446E6079F7C9511AAA1EB5 /* halmac_cfg_wmac_88xx_v1.c in Sources */ = {isa = PBXBuildFile; fileRef = 7852BFC9BDFFC1B44283954B; };
+                E30F2580CAAC9383C1B66C14 /* halmac_common_88xx_v1.c in Sources */ = {isa = PBXBuildFile; fileRef = 36A1A77D38919C1BD32D1502; };
+                1F116FE5B03653B92F4C4CAE /* halmac_efuse_88xx_v1.c in Sources */ = {isa = PBXBuildFile; fileRef = C7DCCD95845AD0D8C6833EF6; };
+                570AD8023CDA8B7443BBE445 /* halmac_flash_88xx_v1.c in Sources */ = {isa = PBXBuildFile; fileRef = 9F9C29A5C142BFE2A806E395; };
+                360F03141C42D55538881A46 /* halmac_fw_88xx_v1.c in Sources */ = {isa = PBXBuildFile; fileRef = 0A634E85FB625FE9A996E20B; };
+                6CD3F0551BBDFE5CDF8D939F /* halmac_gpio_88xx_v1.c in Sources */ = {isa = PBXBuildFile; fileRef = 17C0BA4F98AEAE7465266A5A; };
+                B79383EA775D34623CE15840 /* halmac_init_88xx_v1.c in Sources */ = {isa = PBXBuildFile; fileRef = EF6EEAB92460607E9A66709D; };
+                F2D465EE67D7786C83280CBE /* halmac_mimo_88xx_v1.c in Sources */ = {isa = PBXBuildFile; fileRef = 5008026706ABCF5C4932E5DC; };
+                E8129C61CEC2544336A6FAFB /* halmac_pcie_88xx_v1.c in Sources */ = {isa = PBXBuildFile; fileRef = 1697355A07DD461A08F03D76; };
+                D528783B850C07036FC23E12 /* halmac_sdio_88xx_v1.c in Sources */ = {isa = PBXBuildFile; fileRef = 2109FD8C8EEDFD92D723B475; };
+                6BB8CF568FE8C18B095AC6C1 /* halmac_usb_88xx_v1.c in Sources */ = {isa = PBXBuildFile; fileRef = C055C095A965E13AC7EA0F92; };
+                D94CF51268D2C7A89D86A6AC /* halmac_api.c in Sources */ = {isa = PBXBuildFile; fileRef = 903488A04D1E87F25E45D089; };
+                C03D441E17D3D70781A36ABB /* halmac_dbg.c in Sources */ = {isa = PBXBuildFile; fileRef = A5BD0BB4533280677190DC0C; };
+                1EB8C416BD4F2476385CD4FB /* RTW8192EUHAL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7787EA86D735156895DDB5E7; };
+                4A52E74BE042703B5F3061D2 /* RTWNet80211Globals.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9643A6AB122CC06AD04FEFB; };
+                EFB24D204CDA373A1CE9BF4F /* RTWUSBController.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0041E37126ECEA11C75F221B; };
+                D16E86B3A0269FEB3627EBC8 /* RTWUserClient.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 48A7540EC080A2ABC33CDDBE; };
+                380C0D410659D53DEF8D05EF /* RtWlanUClass.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FB08925342E0142BDCF79F2E; };
+                86B98A3F9D7ECD302AFF839D /* RtWlanUCompat.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E37AFFF6E46EBB229B797890; };
+                B24174AC88DA731E7A85460A /* aes.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 67818F0B4C3E513201FECBB4; };
+                8351DD84885922E7AA9420CE /* arc4.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 95B8CEDBE9290D1500D464D8; };
+                B7295FA7A31555D2CD52D612 /* cmac.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 887C265704A721A8D3DD9156; };
+                4C15D2E7B1B9F39D551B27B2 /* hmac.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AC1B61884A4D317402EA18B7; };
+                9C15E6C7EF471512B0FB7864 /* key_wrap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BD78C70DEC2848EF2C2A9F16; };
+                3AF434EAC2F716DBA2C996C0 /* md5.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9A10933C5E6CD1F181BB19E8; };
+                A4EA77312B10B5577C3ACD2D /* michael.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A89823A6EF19D3BA35D42C4C; };
+                940FA9B16DD8BB9CA6805F50 /* sha1-pbkdf2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 30205F4C42CDA61005A46994; };
+                A6D0F4AED7B19467D3E37D7C /* sha1.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 70E9E38CE45AF0462193C586; };
+                BCACC9415ED66C4D01E4E53C /* sha2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 273BC2723E089CF9ABD0B3FB; };
+                3BCAA46A3ACE44EB13E48619 /* CTimeout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FABA99F2FB4CCF277844B958; };
+                F8ACF71C7F2982BB7EBCB742 /* _string.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C1D0F39DC317BFE518FEBDC6; };
+                12287914860724338FC4FF43 /* ieee80211.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 92E238A430D9012C2F904A27; };
+                7916832421F6BA27CE494182 /* ieee80211_amrr.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 79E60E5F79628F0A2163A14E; };
+                D5F25631C66402394F17CF80 /* ieee80211_crypto.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D82D419444A0C5D01A70F9EF; };
+                4FC8336F0F9A0C3B5F37044E /* ieee80211_crypto_bip.cpp in Sources */ = {isa = PBXBuildFile; fileRef = EFF87ED52AD366CB326B18DB; };
+                4600FEE887DB1910F780E726 /* ieee80211_crypto_ccmp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 03C02FA0110F788C7D018A8C; };
+                31C94F646A907B2CE12895CE /* ieee80211_crypto_tkip.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6597049321792A8CBB8AE1C1; };
+                5B2EEEB2CB4F5571266AF06C /* ieee80211_crypto_wep.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0CDFCB8F24E8064E5FF4A5FC; };
+                5D0A077DBC129DD84A3B2F9E /* ieee80211_input.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8DE55E746BC21812BC1A43FC; };
+                994B37948DD88012B926EF38 /* ieee80211_ioctl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1387EE9FDAC7FFAC9C839D01; };
+                3ABA38A41D64FBD7A2473BED /* ieee80211_node.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3CB8AEC898A28033EE225545; };
+                EE99DB445848B5CFB1DDDBD5 /* ieee80211_output.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5133DA8DBE9221FFA2357015; };
+                0E1066EAFE841995525C0FF2 /* ieee80211_pae_input.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FB2DB463919668843DC6AED8; };
+                2EA17E4DCE94F89E026B9FAD /* ieee80211_pae_output.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CBA77FC396AAD165DADACA16; };
+                7CBE44AD8DD6C2592AFC0DD8 /* ieee80211_proto.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0DA7876D2E3675280A87F91; };
+                BFAE7A9109F4932A9262673C /* timeout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0E26FD64BAF74680178DB6BC; };
+                BADF2D0052CA8735AC76BC05 /* _ifq.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 17C4A89B1A34572BF6338C13; };
+                0B439313081172E8BA3D00FC /* _mbuf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4D449284A070934B480B7E19; };
+                DBDCB910540FE3E710E7F211 /* _task.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A7149973FE93B66A971558BE; };
+                3B4F3AF96D1418342CD3C1A4 /* rtwn.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 04A5382B88DAD92C9FBA555B; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+                B7130DB4A1FDC9539AAAC27F /* CREDITS.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "CREDITS.md"; sourceTree = SOURCE_ROOT; };
+                BFCE8AD07181FB750CF897AF /* Chip.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/Chip.c"; sourceTree = SOURCE_ROOT; };
+                CDBED9D6145846EECEE48B57 /* ChipIdentity.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/ChipIdentity.c"; sourceTree = SOURCE_ROOT; };
+                9C67443D2E039BFA0D07BE08 /* DFSRegulatory.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/DFSRegulatory.c"; sourceTree = SOURCE_ROOT; };
+                BE8ED91A2A15C7E0F29984EE /* DFSStation.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/DFSStation.c"; sourceTree = SOURCE_ROOT; };
+                96ABDA942DEA836353E8001D /* Efuse.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/Efuse.c"; sourceTree = SOURCE_ROOT; };
+                8CA49F0999D4587F0B185A3D /* EthernetBridge.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/EthernetBridge.c"; sourceTree = SOURCE_ROOT; };
+                39B2A789D07EB54CC36AFC0F /* FCS.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/FCS.c"; sourceTree = SOURCE_ROOT; };
+                9C161F485D46C088E95515B7 /* Family5GHzScan.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/Family5GHzScan.c"; sourceTree = SOURCE_ROOT; };
+                64F490290695C9FB83EBBE12 /* Family5GHzStation.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/Family5GHzStation.c"; sourceTree = SOURCE_ROOT; };
+                453432F9C24B5983DCB44757 /* FamilyBackend.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/FamilyBackend.c"; sourceTree = SOURCE_ROOT; };
+                72EF783096B34E0FAF220B6B /* FamilyRX24.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/FamilyRX24.c"; sourceTree = SOURCE_ROOT; };
+                44A9BCBB9ECD51D5AB37F0CB /* FamilyRadioPolicy.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/FamilyRadioPolicy.c"; sourceTree = SOURCE_ROOT; };
+                51663E9331EA38C8F350E8F8 /* Firmware.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/Firmware.c"; sourceTree = SOURCE_ROOT; };
+                E683DCF9EC995717782A2BB3 /* FirmwareBoot.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/FirmwareBoot.c"; sourceTree = SOURCE_ROOT; };
+                C8D72BF5DE0E78800DF7AAB8 /* FrameWire.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/FrameWire.c"; sourceTree = SOURCE_ROOT; };
+                BADCDACF2B2EDB3C164A1872 /* HAL8812.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/HAL8812.c"; sourceTree = SOURCE_ROOT; };
+                AEF64A4C1D56B82201345001 /* LLT.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/LLT.c"; sourceTree = SOURCE_ROOT; };
+                C5F1EE3EA161A6ED18F558D7 /* LegacyFirmwareStage.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/LegacyFirmwareStage.c"; sourceTree = SOURCE_ROOT; };
+                8C861BAC9436A8CDD0935C6C /* MacDMA.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/MacDMA.c"; sourceTree = SOURCE_ROOT; };
+                76665D0866A9A932D04ABC50 /* PHYProfile.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/PHYProfile.c"; sourceTree = SOURCE_ROOT; };
+                945905554AE51957A6805DD6 /* PHYRegisters.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/PHYRegisters.c"; sourceTree = SOURCE_ROOT; };
+                FB2127A71D4E845863E610CF /* PowerSequence.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/PowerSequence.c"; sourceTree = SOURCE_ROOT; };
+                62FEDDFF7980C89A1A4F6017 /* RFCalibration.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RFCalibration.c"; sourceTree = SOURCE_ROOT; };
+                B3D0EEDE9F140EEF7F7CE731 /* RFReadback.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RFReadback.c"; sourceTree = SOURCE_ROOT; };
+                31C18DF3AD3EBC02BE985E0F /* RTL8188EUHT.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTL8188EUHT.c"; sourceTree = SOURCE_ROOT; };
+                5FE8B9191D21408D85CEEDD9 /* RTL8192CDataPath.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTL8192CDataPath.c"; sourceTree = SOURCE_ROOT; };
+                BF76176317D5A61727425B39 /* RTL8192DUBoot.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTL8192DUBoot.c"; sourceTree = SOURCE_ROOT; };
+                48EF5511F55F75D883C355C8 /* RTL8192DUDataPath.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTL8192DUDataPath.c"; sourceTree = SOURCE_ROOT; };
+                BBC128B30D46DD6F8F4B1A72 /* RTL8192DUEfuse.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTL8192DUEfuse.c"; sourceTree = SOURCE_ROOT; };
+                E36CF55806F4EEEEE7455000 /* RTL8192DUPHY.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTL8192DUPHY.c"; sourceTree = SOURCE_ROOT; };
+                772773E0727A685F7C7552A8 /* RTL8192DUStation.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTL8192DUStation.c"; sourceTree = SOURCE_ROOT; };
+                7799FEC7345861011F9B6C33 /* RTL8192DUUSB.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTL8192DUUSB.c"; sourceTree = SOURCE_ROOT; };
+                B2B0A48B8A69C533A9C01AE1 /* RTL8192EU.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTL8192EU.c"; sourceTree = SOURCE_ROOT; };
+                C897C0A3FFB86708E7081112 /* RTL8192EUDataPath.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTL8192EUDataPath.c"; sourceTree = SOURCE_ROOT; };
+                ED9CFDF9CCAC8F49F0FFE57B /* RTL8192EUHT.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTL8192EUHT.c"; sourceTree = SOURCE_ROOT; };
+                48F6DAF56B57EC1E5D71B3D7 /* RTL8192EUHardware.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTL8192EUHardware.c"; sourceTree = SOURCE_ROOT; };
+                6AA82BA4B6456C7424D5F646 /* RTL8192FU.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTL8192FU.c"; sourceTree = SOURCE_ROOT; };
+                3A2AB872F83F30716ED095FB /* RTL8192FUDataPath.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTL8192FUDataPath.c"; sourceTree = SOURCE_ROOT; };
+                96CBAFDEB2B543CF41DA1A16 /* RTL8710BU.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTL8710BU.c"; sourceTree = SOURCE_ROOT; };
+                3C3E82CFFFAADD56D9F21893 /* RTL8710BUDataPath.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTL8710BUDataPath.c"; sourceTree = SOURCE_ROOT; };
+                7E9BF89B4D9D269BE930401C /* RTL8723BU.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTL8723BU.c"; sourceTree = SOURCE_ROOT; };
+                CA2B98D6264A91232D042676 /* RTL8723BUDataPath.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTL8723BUDataPath.c"; sourceTree = SOURCE_ROOT; };
+                13E429E54BC05EBBEDDBF0F6 /* RTL8812AUBoot.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTL8812AUBoot.c"; sourceTree = SOURCE_ROOT; };
+                DD6A9AD0A05903D481D4B984 /* RTL8812AUBootstrap.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTL8812AUBootstrap.c"; sourceTree = SOURCE_ROOT; };
+                D870283567124D4EBF5E381A /* RTL8812AUDataPath.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTL8812AUDataPath.c"; sourceTree = SOURCE_ROOT; };
+                E9C3C2DFB66EBA1D99F86C00 /* RTL8812AUMAC.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTL8812AUMAC.c"; sourceTree = SOURCE_ROOT; };
+                BAA4C3C4C24063E3764B9C3F /* RTL8812AUPHY.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTL8812AUPHY.c"; sourceTree = SOURCE_ROOT; };
+                AFC955B570BA595D371D9C83 /* RTL8812AUPassive.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTL8812AUPassive.c"; sourceTree = SOURCE_ROOT; };
+                82F9468ADBB7462F5ACE467D /* RTL8812AURadio.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTL8812AURadio.c"; sourceTree = SOURCE_ROOT; };
+                643D2609771BB2EC0352E6F2 /* RTL8812AURuntime.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTL8812AURuntime.c"; sourceTree = SOURCE_ROOT; };
+                14EAF0B7953DEDE91398B2BA /* RTL8812AUStation.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTL8812AUStation.c"; sourceTree = SOURCE_ROOT; };
+                65EE87802ECC621807EA6920 /* RTL8814AUBoot.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTL8814AUBoot.c"; sourceTree = SOURCE_ROOT; };
+                5242B4DFE8ECBAA54107903C /* RTL8814AUDataPath.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTL8814AUDataPath.c"; sourceTree = SOURCE_ROOT; };
+                3498C2D0E8266E9F8552DB00 /* RTL8814AUEfuse.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTL8814AUEfuse.c"; sourceTree = SOURCE_ROOT; };
+                51989CA19A59581AD50FE2D1 /* RTL8814AUMAC.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTL8814AUMAC.c"; sourceTree = SOURCE_ROOT; };
+                8E3D583DF5EE063D20A845AF /* RTL8814AUPHY.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTL8814AUPHY.c"; sourceTree = SOURCE_ROOT; };
+                D3A036443895D4DB17DDA31B /* RTL8814AUStation.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTL8814AUStation.c"; sourceTree = SOURCE_ROOT; };
+                4C70A788070555DE0FE18BAC /* RTL8821AUCoex.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTL8821AUCoex.c"; sourceTree = SOURCE_ROOT; };
+                592844159132C149C28C4BBF /* RTW8814BHAL.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTW8814BHAL.c"; sourceTree = SOURCE_ROOT; };
+                2CE7F8A1C4285107E25235CA /* RTW8814BPHY.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTW8814BPHY.c"; sourceTree = SOURCE_ROOT; };
+                61F1D73EC02CBC20984360F6 /* RTW8814BUSBCodec.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTW8814BUSBCodec.c"; sourceTree = SOURCE_ROOT; };
+                0DA7CD1CC384780AD8C2161B /* RTW88Boot.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTW88Boot.c"; sourceTree = SOURCE_ROOT; };
+                6C52BDBF9436A7D799436218 /* RTW88Coex.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTW88Coex.c"; sourceTree = SOURCE_ROOT; };
+                6C37A5721E8BB93B56951191 /* RTW88Firmware.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTW88Firmware.c"; sourceTree = SOURCE_ROOT; };
+                DC180452C584A2D835826E0A /* RTW88MAC.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTW88MAC.c"; sourceTree = SOURCE_ROOT; };
+                DB0C673BEA3D9D54E6486626 /* RTW88PHY.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTW88PHY.c"; sourceTree = SOURCE_ROOT; };
+                762E98E193D82996BB2FEB02 /* RTW88PHYOperating.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTW88PHYOperating.c"; sourceTree = SOURCE_ROOT; };
+                BA13C96F9B68A1055D193816 /* RTW88RX.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTW88RX.c"; sourceTree = SOURCE_ROOT; };
+                BF3311FE9B5FE903C216DD9F /* RTW88Station.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTW88Station.c"; sourceTree = SOURCE_ROOT; };
+                6F916F0B8C679C760D80AE27 /* RTW88USBDataPath.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RTW88USBDataPath.c"; sourceTree = SOURCE_ROOT; };
+                707B3E59DBB895558CB5E408 /* RXMonitor.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/RXMonitor.c"; sourceTree = SOURCE_ROOT; };
+                E1DD8CC1C767B18CED5D732E /* StationMgmt.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/StationMgmt.c"; sourceTree = SOURCE_ROOT; };
+                0B750DAAC518E3642A1CB624 /* StationPort.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/StationPort.c"; sourceTree = SOURCE_ROOT; };
+                9DB3833C027CE09AFD73E2D8 /* USBBulk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/USBBulk.c"; sourceTree = SOURCE_ROOT; };
+                5D6C98D84B3F875E52F69209 /* USBControl.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/USBControl.c"; sourceTree = SOURCE_ROOT; };
+                3F336EF071620F651E707F43 /* USBDescriptors.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/USBDescriptors.c"; sourceTree = SOURCE_ROOT; };
+                2AA64D9D7CB90D9BE8DE4693 /* USBPackets.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/USBPackets.c"; sourceTree = SOURCE_ROOT; };
+                CCEA2CD948BFBA1D634E328A /* USBProbe.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/USBProbe.c"; sourceTree = SOURCE_ROOT; };
+                CF3DF196B8612AEC898552D7 /* USBRegisterIO.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/USBRegisterIO.c"; sourceTree = SOURCE_ROOT; };
+                0797B7CAE6AB4B9DA0D5E896 /* USBWiFiFirmware.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/USBWiFiFirmware.c"; sourceTree = SOURCE_ROOT; };
+                8838F8F401CD8C0E3833EAC8 /* USBWiFiProfiles.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/USBWiFiProfiles.c"; sourceTree = SOURCE_ROOT; };
+                939B69AE0D1ED9DE71044AF1 /* halmac_gpio_8814b.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/rtl8814b/halmac/halmac_88xx_v1/halmac_8814b/halmac_gpio_8814b.c"; sourceTree = SOURCE_ROOT; };
+                EA893ACCB10469F128D60C58 /* halmac_init_8814b.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/rtl8814b/halmac/halmac_88xx_v1/halmac_8814b/halmac_init_8814b.c"; sourceTree = SOURCE_ROOT; };
+                3FD1FFEBE2FE711612221D09 /* halmac_pcie_8814b.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/rtl8814b/halmac/halmac_88xx_v1/halmac_8814b/halmac_pcie_8814b.c"; sourceTree = SOURCE_ROOT; };
+                9001A5C5AFD24BCBD1263AC4 /* halmac_phy_8814b.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/rtl8814b/halmac/halmac_88xx_v1/halmac_8814b/halmac_phy_8814b.c"; sourceTree = SOURCE_ROOT; };
+                F018C48A8C10B67E8A31F6D1 /* halmac_pwr_seq_8814b.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/rtl8814b/halmac/halmac_88xx_v1/halmac_8814b/halmac_pwr_seq_8814b.c"; sourceTree = SOURCE_ROOT; };
+                7440AA99B8FAE7CEAF8A2CF9 /* halmac_sdio_8814b.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/rtl8814b/halmac/halmac_88xx_v1/halmac_8814b/halmac_sdio_8814b.c"; sourceTree = SOURCE_ROOT; };
+                6F6861AFEE6DD651E0799239 /* halmac_usb_8814b.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/rtl8814b/halmac/halmac_88xx_v1/halmac_8814b/halmac_usb_8814b.c"; sourceTree = SOURCE_ROOT; };
+                5EB1D13D4C6FE8C8B1F3997E /* halmac_bb_rf_88xx_v1.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/rtl8814b/halmac/halmac_88xx_v1/halmac_bb_rf_88xx_v1.c"; sourceTree = SOURCE_ROOT; };
+                7852BFC9BDFFC1B44283954B /* halmac_cfg_wmac_88xx_v1.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/rtl8814b/halmac/halmac_88xx_v1/halmac_cfg_wmac_88xx_v1.c"; sourceTree = SOURCE_ROOT; };
+                36A1A77D38919C1BD32D1502 /* halmac_common_88xx_v1.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/rtl8814b/halmac/halmac_88xx_v1/halmac_common_88xx_v1.c"; sourceTree = SOURCE_ROOT; };
+                C7DCCD95845AD0D8C6833EF6 /* halmac_efuse_88xx_v1.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/rtl8814b/halmac/halmac_88xx_v1/halmac_efuse_88xx_v1.c"; sourceTree = SOURCE_ROOT; };
+                9F9C29A5C142BFE2A806E395 /* halmac_flash_88xx_v1.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/rtl8814b/halmac/halmac_88xx_v1/halmac_flash_88xx_v1.c"; sourceTree = SOURCE_ROOT; };
+                0A634E85FB625FE9A996E20B /* halmac_fw_88xx_v1.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/rtl8814b/halmac/halmac_88xx_v1/halmac_fw_88xx_v1.c"; sourceTree = SOURCE_ROOT; };
+                17C0BA4F98AEAE7465266A5A /* halmac_gpio_88xx_v1.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/rtl8814b/halmac/halmac_88xx_v1/halmac_gpio_88xx_v1.c"; sourceTree = SOURCE_ROOT; };
+                EF6EEAB92460607E9A66709D /* halmac_init_88xx_v1.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/rtl8814b/halmac/halmac_88xx_v1/halmac_init_88xx_v1.c"; sourceTree = SOURCE_ROOT; };
+                5008026706ABCF5C4932E5DC /* halmac_mimo_88xx_v1.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/rtl8814b/halmac/halmac_88xx_v1/halmac_mimo_88xx_v1.c"; sourceTree = SOURCE_ROOT; };
+                1697355A07DD461A08F03D76 /* halmac_pcie_88xx_v1.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/rtl8814b/halmac/halmac_88xx_v1/halmac_pcie_88xx_v1.c"; sourceTree = SOURCE_ROOT; };
+                2109FD8C8EEDFD92D723B475 /* halmac_sdio_88xx_v1.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/rtl8814b/halmac/halmac_88xx_v1/halmac_sdio_88xx_v1.c"; sourceTree = SOURCE_ROOT; };
+                C055C095A965E13AC7EA0F92 /* halmac_usb_88xx_v1.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/rtl8814b/halmac/halmac_88xx_v1/halmac_usb_88xx_v1.c"; sourceTree = SOURCE_ROOT; };
+                903488A04D1E87F25E45D089 /* halmac_api.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/rtl8814b/halmac/halmac_api.c"; sourceTree = SOURCE_ROOT; };
+                A5BD0BB4533280677190DC0C /* halmac_dbg.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "Core/rtl8814b/halmac/halmac_dbg.c"; sourceTree = SOURCE_ROOT; };
+                3A1114BA953E00479AB4C1AA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Driver/Info.plist"; sourceTree = SOURCE_ROOT; };
+                8BC1C2274F6C72EFC8A40D00 /* LegacyUSBWiFiFirmware.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Driver/LegacyUSBWiFiFirmware.inc"; sourceTree = SOURCE_ROOT; };
+                A2EFC0768425E3775AD32F5D /* RTL8192DUFirmware.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Driver/RTL8192DUFirmware.inc"; sourceTree = SOURCE_ROOT; };
+                26997E64D99C8F7DCD707629 /* RTL8192EUFirmware.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Driver/RTL8192EUFirmware.inc"; sourceTree = SOURCE_ROOT; };
+                92889679C606BBA2A279456E /* RTL8192FUFirmware.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Driver/RTL8192FUFirmware.inc"; sourceTree = SOURCE_ROOT; };
+                EEA2B56C8B4B450198DB84B5 /* RTL8710BUFirmware.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Driver/RTL8710BUFirmware.inc"; sourceTree = SOURCE_ROOT; };
+                23C9DBE134A9DC4D1AFAF40A /* RTL8723BUFirmware.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Driver/RTL8723BUFirmware.inc"; sourceTree = SOURCE_ROOT; };
+                29CEF23A54A9A22BBB18B448 /* RTL8812AUFirmware.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Driver/RTL8812AUFirmware.inc"; sourceTree = SOURCE_ROOT; };
+                689F28183DA6B73C6E902142 /* RTL8814AUFirmware.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Driver/RTL8814AUFirmware.inc"; sourceTree = SOURCE_ROOT; };
+                2CFCA4A385CEBD226E1D3643 /* RTL8821AUFirmware.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Driver/RTL8821AUFirmware.inc"; sourceTree = SOURCE_ROOT; };
+                681104E581EBBB779F1317B0 /* RTL8821CUFirmware.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Driver/RTL8821CUFirmware.inc"; sourceTree = SOURCE_ROOT; };
+                60F6CEDCCB3E7BEF955A029E /* RTL8822BUFirmware.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Driver/RTL8822BUFirmware.inc"; sourceTree = SOURCE_ROOT; };
+                1067009AA02EBF6AFD555109 /* RTL8822CUFirmware.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Driver/RTL8822CUFirmware.inc"; sourceTree = SOURCE_ROOT; };
+                E4DBBB8511AF4E299D52B8BE /* RTW8192DUBackend.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Driver/RTW8192DUBackend.inc"; sourceTree = SOURCE_ROOT; };
+                86A71DE170A47947CB457088 /* RTW8192DUBackendMembers.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Driver/RTW8192DUBackendMembers.inc"; sourceTree = SOURCE_ROOT; };
+                7787EA86D735156895DDB5E7 /* RTW8192EUHAL.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Driver/RTW8192EUHAL.cpp"; sourceTree = SOURCE_ROOT; };
+                0601E417ADBBF23078259498 /* RTW8192EUHAL.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = "Driver/RTW8192EUHAL.hpp"; sourceTree = SOURCE_ROOT; };
+                6D22E7D606C92BA7525217DA /* RTW8192FUBackend.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Driver/RTW8192FUBackend.inc"; sourceTree = SOURCE_ROOT; };
+                A728CCE868B6A35177322919 /* RTW8192FUBackendMembers.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Driver/RTW8192FUBackendMembers.inc"; sourceTree = SOURCE_ROOT; };
+                15CA259A62701DF1378BA816 /* RTW8710BUBackend.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Driver/RTW8710BUBackend.inc"; sourceTree = SOURCE_ROOT; };
+                5A82BDEB21ADA55CA3035962 /* RTW8710BUBackendMembers.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Driver/RTW8710BUBackendMembers.inc"; sourceTree = SOURCE_ROOT; };
+                F807964D473304B842083290 /* RTW8723BUBackend.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Driver/RTW8723BUBackend.inc"; sourceTree = SOURCE_ROOT; };
+                79276E992838E5CA87477FD9 /* RTW8723BUBackendMembers.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Driver/RTW8723BUBackendMembers.inc"; sourceTree = SOURCE_ROOT; };
+                59AC5E1C7DB3C3E01826A002 /* RTW8812Backend.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Driver/RTW8812Backend.inc"; sourceTree = SOURCE_ROOT; };
+                69CE6C969924E30FE67AC818 /* RTW8812BackendMembers.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Driver/RTW8812BackendMembers.inc"; sourceTree = SOURCE_ROOT; };
+                2A26556D5BE14BE3152B1AD1 /* RTW8814Backend.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Driver/RTW8814Backend.inc"; sourceTree = SOURCE_ROOT; };
+                E176CAC6E27C8A65E536C060 /* RTW8814Bus.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Driver/RTW8814Bus.inc"; sourceTree = SOURCE_ROOT; };
+                2D09013A2A909BE27E599721 /* RTW88Backend.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Driver/RTW88Backend.inc"; sourceTree = SOURCE_ROOT; };
+                AA4D3D3651268B398FC7C6FF /* RTW88BackendMembers.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Driver/RTW88BackendMembers.inc"; sourceTree = SOURCE_ROOT; };
+                6F52E6E9AE855D045825C242 /* RTW88CoexBackend.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Driver/RTW88CoexBackend.inc"; sourceTree = SOURCE_ROOT; };
+                80390D312A6CE6B9EF00767C /* RTWBandCapabilities.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = "Driver/RTWBandCapabilities.hpp"; sourceTree = SOURCE_ROOT; };
+                5C8A8CA0A7E9C6E32063EC86 /* RTWControl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Driver/RTWControl.h"; sourceTree = SOURCE_ROOT; };
+                D35A99D2B45B81E2D372B8EA /* RTWDFSRegulatory.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Driver/RTWDFSRegulatory.inc"; sourceTree = SOURCE_ROOT; };
+                05877C033401F3ADD613D317 /* RTWDFSStation.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Driver/RTWDFSStation.inc"; sourceTree = SOURCE_ROOT; };
+                D01D19572438D50D03812B51 /* RTWFamilyDataPath.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Driver/RTWFamilyDataPath.inc"; sourceTree = SOURCE_ROOT; };
+                FF70F6FFB282F94F3C131761 /* RTWHTDataPath.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Driver/RTWHTDataPath.inc"; sourceTree = SOURCE_ROOT; };
+                B9643A6AB122CC06AD04FEFB /* RTWNet80211Globals.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Driver/RTWNet80211Globals.cpp"; sourceTree = SOURCE_ROOT; };
+                69840D71442B497CA69BC3AC /* RTWNet80211Globals.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = "Driver/RTWNet80211Globals.hpp"; sourceTree = SOURCE_ROOT; };
+                793DEFA0D8E9E9F7D4AB76A7 /* RTWPerformanceDiagnostics.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Driver/RTWPerformanceDiagnostics.inc"; sourceTree = SOURCE_ROOT; };
+                0041E37126ECEA11C75F221B /* RTWUSBController.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Driver/RTWUSBController.cpp"; sourceTree = SOURCE_ROOT; };
+                F29796A876DA5952D658E76D /* RTWUSBController.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = "Driver/RTWUSBController.hpp"; sourceTree = SOURCE_ROOT; };
+                48A7540EC080A2ABC33CDDBE /* RTWUserClient.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Driver/RTWUserClient.cpp"; sourceTree = SOURCE_ROOT; };
+                8BE10F7A50021E99F328E81D /* RTWUserClient.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = "Driver/RTWUserClient.hpp"; sourceTree = SOURCE_ROOT; };
+                FB08925342E0142BDCF79F2E /* RtWlanUClass.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Driver/RtWlanUClass.cpp"; sourceTree = SOURCE_ROOT; };
+                E37AFFF6E46EBB229B797890 /* RtWlanUCompat.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Driver/RtWlanUCompat.cpp"; sourceTree = SOURCE_ROOT; };
+                4C9C14927B205B20AC43D29A /* RtWlanUCompat.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Driver/RtWlanUCompat.h"; sourceTree = SOURCE_ROOT; };
+                68A1AF3D5DA315BCF1236AEC /* LICENCE.rtlwifi_firmware.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Firmware/LICENCE.rtlwifi_firmware.txt"; sourceTree = SOURCE_ROOT; };
+                102EE960B50AA33F289AED93 /* legacy-firmware-provenance.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Firmware/legacy-firmware-provenance.json"; sourceTree = SOURCE_ROOT; };
+                37BCBAECADCD97C9F37E5B87 /* urtwn-license */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Firmware/urtwn-license"; sourceTree = SOURCE_ROOT; };
+                7A8A84AE2B0D15EB2E1106F9 /* Beacon.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = "Headers/rtw/Beacon.hpp"; sourceTree = SOURCE_ROOT; };
+                EA5AB5E09F13A8272EFF406F /* Chip.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/Chip.h"; sourceTree = SOURCE_ROOT; };
+                E960587E91F55D54CE3C6C6D /* ChipIdentity.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/ChipIdentity.h"; sourceTree = SOURCE_ROOT; };
+                2290163992AB7BB7FDA77B03 /* DFSRegulatory.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/DFSRegulatory.h"; sourceTree = SOURCE_ROOT; };
+                6C47F40E8B3FA827FC87CCBA /* DFSStation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/DFSStation.h"; sourceTree = SOURCE_ROOT; };
+                754D006A148F61B9670DC737 /* DiagnosticPublishPolicy.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = "Headers/rtw/DiagnosticPublishPolicy.hpp"; sourceTree = SOURCE_ROOT; };
+                29D7F6453D9B7235C2871A3D /* Efuse.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/Efuse.h"; sourceTree = SOURCE_ROOT; };
+                AF2053595E3D2955BEFC5410 /* EthernetBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/EthernetBridge.h"; sourceTree = SOURCE_ROOT; };
+                8172819A56BB8B0FE5442952 /* FCS.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/FCS.h"; sourceTree = SOURCE_ROOT; };
+                B7A049A87253E2CA686A4FC1 /* Family5GHzScan.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/Family5GHzScan.h"; sourceTree = SOURCE_ROOT; };
+                F085E42E659FD46AC1B86505 /* Family5GHzStation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/Family5GHzStation.h"; sourceTree = SOURCE_ROOT; };
+                4C78189A3F372C8E3DF78062 /* FamilyBackend.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/FamilyBackend.h"; sourceTree = SOURCE_ROOT; };
+                33AF490B7926B9F39F6D391C /* FamilyRX24.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/FamilyRX24.h"; sourceTree = SOURCE_ROOT; };
+                F1BC4E8270F12E49C73EFEF2 /* FamilyRadioPolicy.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/FamilyRadioPolicy.h"; sourceTree = SOURCE_ROOT; };
+                AFFA2BC928782CA19C5C61D3 /* Firmware.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/Firmware.h"; sourceTree = SOURCE_ROOT; };
+                8404EA087E857C27812BA427 /* FirmwareBoot.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/FirmwareBoot.h"; sourceTree = SOURCE_ROOT; };
+                1C96093EF9F4B7043B964F97 /* Frame.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = "Headers/rtw/Frame.hpp"; sourceTree = SOURCE_ROOT; };
+                BF631BC4CFDFFE40C009038E /* FrameWire.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/FrameWire.h"; sourceTree = SOURCE_ROOT; };
+                5D659D1A66D94792AB7FF9C9 /* HAL8812.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/HAL8812.h"; sourceTree = SOURCE_ROOT; };
+                36D4C6A024EF59F576F91931 /* LLT.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/LLT.h"; sourceTree = SOURCE_ROOT; };
+                909E6D14E986E59F8B884D6B /* LegacyFirmwareStage.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/LegacyFirmwareStage.h"; sourceTree = SOURCE_ROOT; };
+                FDE6B6653F2C2B69E20BDB9E /* LinkState.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = "Headers/rtw/LinkState.hpp"; sourceTree = SOURCE_ROOT; };
+                4832E311AC0E689BB4C741EA /* MacDMA.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/MacDMA.h"; sourceTree = SOURCE_ROOT; };
+                3910794E55440DD35C02DFC4 /* NetworkSecurity.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/NetworkSecurity.h"; sourceTree = SOURCE_ROOT; };
+                06310B7968E9909D477514EE /* PHYProfile.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/PHYProfile.h"; sourceTree = SOURCE_ROOT; };
+                2B1399071E0C93721B305B42 /* PHYRegisters.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/PHYRegisters.h"; sourceTree = SOURCE_ROOT; };
+                566F5D86D7C86659D4FA2133 /* PowerSequence.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/PowerSequence.h"; sourceTree = SOURCE_ROOT; };
+                48CA2B0376A04AE841CE6B74 /* RFCalibration.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RFCalibration.h"; sourceTree = SOURCE_ROOT; };
+                AAA569F9CE1AD7C52E7A5491 /* RFReadback.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RFReadback.h"; sourceTree = SOURCE_ROOT; };
+                E3DAA7AEF25CBDB9104E1ED6 /* RTL8188EUHT.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTL8188EUHT.h"; sourceTree = SOURCE_ROOT; };
+                E38C97AFA5AB519A5E5D10F9 /* RTL8192CDataPath.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTL8192CDataPath.h"; sourceTree = SOURCE_ROOT; };
+                BCCBD7042A3F732A4BF94C8F /* RTL8192DUBoot.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTL8192DUBoot.h"; sourceTree = SOURCE_ROOT; };
+                A54413AD82D163046C47F2DE /* RTL8192DUDataPath.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTL8192DUDataPath.h"; sourceTree = SOURCE_ROOT; };
+                9E609E2F59E719CB37E1971D /* RTL8192DUEfuse.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTL8192DUEfuse.h"; sourceTree = SOURCE_ROOT; };
+                D3A81081CB67459993AFC8AC /* RTL8192DUPHY.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTL8192DUPHY.h"; sourceTree = SOURCE_ROOT; };
+                B5A3154033F3F490B6191EE3 /* RTL8192DUStation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTL8192DUStation.h"; sourceTree = SOURCE_ROOT; };
+                2476D534D26FFD99DAF4AE63 /* RTL8192DUUSB.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTL8192DUUSB.h"; sourceTree = SOURCE_ROOT; };
+                816CCA2B54FBC78AB711B59F /* RTL8192EU.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTL8192EU.h"; sourceTree = SOURCE_ROOT; };
+                E181C02BFA8A87C7E00ECD2F /* RTL8192EUDataPath.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTL8192EUDataPath.h"; sourceTree = SOURCE_ROOT; };
+                2B9EC64C29FCCE90372FDCB3 /* RTL8192EUHT.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTL8192EUHT.h"; sourceTree = SOURCE_ROOT; };
+                9AE0A47C65C41744C8D6D1E8 /* RTL8192EUHardware.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTL8192EUHardware.h"; sourceTree = SOURCE_ROOT; };
+                12FDAE4EDFBA34F7CBC10EC7 /* RTL8192FU.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTL8192FU.h"; sourceTree = SOURCE_ROOT; };
+                A631E92CDFDC4C8457DD49F4 /* RTL8192FUDataPath.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTL8192FUDataPath.h"; sourceTree = SOURCE_ROOT; };
+                65EDCB9B1ED926F720C02CFE /* RTL8710BU.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTL8710BU.h"; sourceTree = SOURCE_ROOT; };
+                9E34380181B56DC57CEBEEE3 /* RTL8710BUDataPath.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTL8710BUDataPath.h"; sourceTree = SOURCE_ROOT; };
+                3E62FF55A029851F8C7EB9B7 /* RTL8723BU.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTL8723BU.h"; sourceTree = SOURCE_ROOT; };
+                E2900EC5EF9196B2E3F7BA91 /* RTL8723BUDataPath.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTL8723BUDataPath.h"; sourceTree = SOURCE_ROOT; };
+                469250E3A08B974F9BB1CB37 /* RTL8812AUBoot.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTL8812AUBoot.h"; sourceTree = SOURCE_ROOT; };
+                9E870F165FC8C384B19C5F7F /* RTL8812AUBootstrap.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTL8812AUBootstrap.h"; sourceTree = SOURCE_ROOT; };
+                F6E22FD570C4912B4F1E7CB6 /* RTL8812AUDataPath.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTL8812AUDataPath.h"; sourceTree = SOURCE_ROOT; };
+                F5DBFD69B070CEC0069EBBED /* RTL8812AUMAC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTL8812AUMAC.h"; sourceTree = SOURCE_ROOT; };
+                9360AAE4073EB801629521E5 /* RTL8812AUPHY.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTL8812AUPHY.h"; sourceTree = SOURCE_ROOT; };
+                84621D90372F56377EE51A40 /* RTL8812AUPassive.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTL8812AUPassive.h"; sourceTree = SOURCE_ROOT; };
+                2A497C1BA0CB490348A2B3D2 /* RTL8812AURadio.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTL8812AURadio.h"; sourceTree = SOURCE_ROOT; };
+                B4F566886FA772F6B80EC0FF /* RTL8812AURuntime.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTL8812AURuntime.h"; sourceTree = SOURCE_ROOT; };
+                11F72AD03962E85AFD3014F7 /* RTL8812AUStation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTL8812AUStation.h"; sourceTree = SOURCE_ROOT; };
+                AA3662458EF9FAB0D1A68B82 /* RTL8814AU.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTL8814AU.h"; sourceTree = SOURCE_ROOT; };
+                CEDD73F66E445B9AF9A47F02 /* RTL8814AUDataPath.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTL8814AUDataPath.h"; sourceTree = SOURCE_ROOT; };
+                C6D9E05044DB8EC06B2EDC12 /* RTL8814AUPHY.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTL8814AUPHY.h"; sourceTree = SOURCE_ROOT; };
+                6266B47896E5D2010E0AF13C /* RTL8814AUStation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTL8814AUStation.h"; sourceTree = SOURCE_ROOT; };
+                FCB6200C9CFCB85EB47F4D72 /* RTL8821AUCoex.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTL8821AUCoex.h"; sourceTree = SOURCE_ROOT; };
+                0DA54E798878066EA590D2E9 /* RTW8814BHAL.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTW8814BHAL.h"; sourceTree = SOURCE_ROOT; };
+                8A1E4E6565512F448EABD058 /* RTW8814BPHY.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTW8814BPHY.h"; sourceTree = SOURCE_ROOT; };
+                BFD64EFE267309E6493B8502 /* RTW88Boot.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTW88Boot.h"; sourceTree = SOURCE_ROOT; };
+                5D96479D077592C52FA9EFD2 /* RTW88Coex.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTW88Coex.h"; sourceTree = SOURCE_ROOT; };
+                B1BBAEE3E10BC1E58E139F95 /* RTW88Firmware.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTW88Firmware.h"; sourceTree = SOURCE_ROOT; };
+                F4AF605FFD1507377C9798AA /* RTW88MAC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTW88MAC.h"; sourceTree = SOURCE_ROOT; };
+                B6224B88B9CD51089D00F582 /* RTW88PHY.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTW88PHY.h"; sourceTree = SOURCE_ROOT; };
+                9AAC40C815759450ACAB5EDA /* RTW88PHYOperating.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTW88PHYOperating.h"; sourceTree = SOURCE_ROOT; };
+                4C518012D61882861C7639CF /* RTW88RX.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTW88RX.h"; sourceTree = SOURCE_ROOT; };
+                A3F932F7DB810F2B85D026A1 /* RTW88Station.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTW88Station.h"; sourceTree = SOURCE_ROOT; };
+                4EC1E264A22CEC62F7FB9AB2 /* RTW88USBDataPath.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RTW88USBDataPath.h"; sourceTree = SOURCE_ROOT; };
+                22005D5E8B73BD68DCDEAB89 /* RXMonitor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/RXMonitor.h"; sourceTree = SOURCE_ROOT; };
+                FAD56AA8E05898D4876A322F /* ScanDiagnostics.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = "Headers/rtw/ScanDiagnostics.hpp"; sourceTree = SOURCE_ROOT; };
+                6E32B927B7B4730B563EA38D /* SignalSample.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/SignalSample.h"; sourceTree = SOURCE_ROOT; };
+                5D00E6C5953D66420F6B0654 /* StationChannels.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/StationChannels.h"; sourceTree = SOURCE_ROOT; };
+                4D8BAD7798A87EF1045A2885 /* StationMgmt.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/StationMgmt.h"; sourceTree = SOURCE_ROOT; };
+                E7937F1DDA03AFB77B829F14 /* StationPort.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/StationPort.h"; sourceTree = SOURCE_ROOT; };
+                76BD2EC666C522891B33846B /* USBBulk.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/USBBulk.h"; sourceTree = SOURCE_ROOT; };
+                8FD835EF1775DCF2AC2B3261 /* USBControl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/USBControl.h"; sourceTree = SOURCE_ROOT; };
+                349266770C3BC8633F7E3427 /* USBDescriptors.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/USBDescriptors.h"; sourceTree = SOURCE_ROOT; };
+                F7879492BCC8D19EDA14EE53 /* USBIDs.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = "Headers/rtw/USBIDs.hpp"; sourceTree = SOURCE_ROOT; };
+                D18E1069F0BF4381057068F5 /* USBPackets.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/USBPackets.h"; sourceTree = SOURCE_ROOT; };
+                E762BA3EE4165A6BA6DE8A4A /* USBProbe.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/USBProbe.h"; sourceTree = SOURCE_ROOT; };
+                C273EE951ABE65FDEA0C5EB0 /* USBRXCapacity.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/USBRXCapacity.h"; sourceTree = SOURCE_ROOT; };
+                965323CCFF03FBDCCCE671A1 /* USBRegisterIO.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/USBRegisterIO.h"; sourceTree = SOURCE_ROOT; };
+                8BE7264CD975F9E6D4C5F4AB /* USBWiFiFirmware.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/USBWiFiFirmware.h"; sourceTree = SOURCE_ROOT; };
+                604A2CB7E69A266528E672F6 /* USBWiFiProfiles.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Headers/rtw/USBWiFiProfiles.h"; sourceTree = SOURCE_ROOT; };
+                E516E511F9ACF60C52CA594A /* LICENSE-GPL-2.0.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "LICENSE-GPL-2.0.txt"; sourceTree = SOURCE_ROOT; };
+                6B2707E89C2D38F64ACC2966 /* README-UPDATES.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "README-UPDATES.md"; sourceTree = SOURCE_ROOT; };
+                606B93515E19D18D82F28DD8 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "README.md"; sourceTree = SOURCE_ROOT; };
+                1BAC0CADADBC3204776DCF21 /* SOURCES.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "SOURCES.md"; sourceTree = SOURCE_ROOT; };
+                67818F0B4C3E513201FECBB4 /* aes.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Stack/itl80211/openbsd/crypto/aes.cpp"; sourceTree = SOURCE_ROOT; };
+                95B8CEDBE9290D1500D464D8 /* arc4.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Stack/itl80211/openbsd/crypto/arc4.cpp"; sourceTree = SOURCE_ROOT; };
+                887C265704A721A8D3DD9156 /* cmac.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Stack/itl80211/openbsd/crypto/cmac.cpp"; sourceTree = SOURCE_ROOT; };
+                AC1B61884A4D317402EA18B7 /* hmac.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Stack/itl80211/openbsd/crypto/hmac.cpp"; sourceTree = SOURCE_ROOT; };
+                BD78C70DEC2848EF2C2A9F16 /* key_wrap.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Stack/itl80211/openbsd/crypto/key_wrap.cpp"; sourceTree = SOURCE_ROOT; };
+                9A10933C5E6CD1F181BB19E8 /* md5.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Stack/itl80211/openbsd/crypto/md5.cpp"; sourceTree = SOURCE_ROOT; };
+                A89823A6EF19D3BA35D42C4C /* michael.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Stack/itl80211/openbsd/crypto/michael.cpp"; sourceTree = SOURCE_ROOT; };
+                30205F4C42CDA61005A46994 /* sha1-pbkdf2.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Stack/itl80211/openbsd/crypto/sha1-pbkdf2.cpp"; sourceTree = SOURCE_ROOT; };
+                70E9E38CE45AF0462193C586 /* sha1.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Stack/itl80211/openbsd/crypto/sha1.cpp"; sourceTree = SOURCE_ROOT; };
+                273BC2723E089CF9ABD0B3FB /* sha2.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Stack/itl80211/openbsd/crypto/sha2.cpp"; sourceTree = SOURCE_ROOT; };
+                FABA99F2FB4CCF277844B958 /* CTimeout.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Stack/itl80211/openbsd/net80211/CTimeout.cpp"; sourceTree = SOURCE_ROOT; };
+                C1D0F39DC317BFE518FEBDC6 /* _string.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Stack/itl80211/openbsd/net80211/_string.cpp"; sourceTree = SOURCE_ROOT; };
+                92E238A430D9012C2F904A27 /* ieee80211.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Stack/itl80211/openbsd/net80211/ieee80211.cpp"; sourceTree = SOURCE_ROOT; };
+                79E60E5F79628F0A2163A14E /* ieee80211_amrr.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Stack/itl80211/openbsd/net80211/ieee80211_amrr.cpp"; sourceTree = SOURCE_ROOT; };
+                D82D419444A0C5D01A70F9EF /* ieee80211_crypto.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Stack/itl80211/openbsd/net80211/ieee80211_crypto.cpp"; sourceTree = SOURCE_ROOT; };
+                EFF87ED52AD366CB326B18DB /* ieee80211_crypto_bip.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Stack/itl80211/openbsd/net80211/ieee80211_crypto_bip.cpp"; sourceTree = SOURCE_ROOT; };
+                03C02FA0110F788C7D018A8C /* ieee80211_crypto_ccmp.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Stack/itl80211/openbsd/net80211/ieee80211_crypto_ccmp.cpp"; sourceTree = SOURCE_ROOT; };
+                6597049321792A8CBB8AE1C1 /* ieee80211_crypto_tkip.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Stack/itl80211/openbsd/net80211/ieee80211_crypto_tkip.cpp"; sourceTree = SOURCE_ROOT; };
+                0CDFCB8F24E8064E5FF4A5FC /* ieee80211_crypto_wep.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Stack/itl80211/openbsd/net80211/ieee80211_crypto_wep.cpp"; sourceTree = SOURCE_ROOT; };
+                8DE55E746BC21812BC1A43FC /* ieee80211_input.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Stack/itl80211/openbsd/net80211/ieee80211_input.cpp"; sourceTree = SOURCE_ROOT; };
+                1387EE9FDAC7FFAC9C839D01 /* ieee80211_ioctl.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Stack/itl80211/openbsd/net80211/ieee80211_ioctl.cpp"; sourceTree = SOURCE_ROOT; };
+                3CB8AEC898A28033EE225545 /* ieee80211_node.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Stack/itl80211/openbsd/net80211/ieee80211_node.cpp"; sourceTree = SOURCE_ROOT; };
+                5133DA8DBE9221FFA2357015 /* ieee80211_output.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Stack/itl80211/openbsd/net80211/ieee80211_output.cpp"; sourceTree = SOURCE_ROOT; };
+                FB2DB463919668843DC6AED8 /* ieee80211_pae_input.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Stack/itl80211/openbsd/net80211/ieee80211_pae_input.cpp"; sourceTree = SOURCE_ROOT; };
+                CBA77FC396AAD165DADACA16 /* ieee80211_pae_output.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Stack/itl80211/openbsd/net80211/ieee80211_pae_output.cpp"; sourceTree = SOURCE_ROOT; };
+                D0DA7876D2E3675280A87F91 /* ieee80211_proto.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Stack/itl80211/openbsd/net80211/ieee80211_proto.cpp"; sourceTree = SOURCE_ROOT; };
+                0E26FD64BAF74680178DB6BC /* timeout.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Stack/itl80211/openbsd/net80211/timeout.cpp"; sourceTree = SOURCE_ROOT; };
+                17C4A89B1A34572BF6338C13 /* _ifq.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Stack/itl80211/openbsd/sys/_ifq.cpp"; sourceTree = SOURCE_ROOT; };
+                4D449284A070934B480B7E19 /* _mbuf.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Stack/itl80211/openbsd/sys/_mbuf.cpp"; sourceTree = SOURCE_ROOT; };
+                A7149973FE93B66A971558BE /* _task.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Stack/itl80211/openbsd/sys/_task.cpp"; sourceTree = SOURCE_ROOT; };
+                04A5382B88DAD92C9FBA555B /* rtwn.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Stack/rtwn/rtwn.cpp"; sourceTree = SOURCE_ROOT; };
+                812856A09EF8D3B273AAA83E /* macOS-RTL-WIFI.kext */ = {isa = PBXFileReference; explicitFileType = wrapper.kext; path = "macOS-RTL-WIFI.kext"; sourceTree = BUILT_PRODUCTS_DIR; };
+                A1E8F00D2026C0DE0A0B1F02 /* Beacon.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Core/Beacon.cpp"; sourceTree = SOURCE_ROOT; };
+                A1E8F00D2026C0DE0A0B1F04 /* Frame.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Core/Frame.cpp"; sourceTree = SOURCE_ROOT; };
+                A1E8F00D2026C0DE0A0B1F06 /* LinkState.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Core/LinkState.cpp"; sourceTree = SOURCE_ROOT; };
+                A1E8F00D2026C0DE0A0B1F08 /* USBIDs.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Core/USBIDs.cpp"; sourceTree = SOURCE_ROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+                4A025D065D041B7A83342F74 /* Driver */ = {isa = PBXGroup; children = (
+                        3A1114BA953E00479AB4C1AA,
+                        8BC1C2274F6C72EFC8A40D00,
+                        A2EFC0768425E3775AD32F5D,
+                        26997E64D99C8F7DCD707629,
+                        92889679C606BBA2A279456E,
+                        EEA2B56C8B4B450198DB84B5,
+                        23C9DBE134A9DC4D1AFAF40A,
+                        29CEF23A54A9A22BBB18B448,
+                        689F28183DA6B73C6E902142,
+                        2CFCA4A385CEBD226E1D3643,
+                        681104E581EBBB779F1317B0,
+                        60F6CEDCCB3E7BEF955A029E,
+                        1067009AA02EBF6AFD555109,
+                        E4DBBB8511AF4E299D52B8BE,
+                        86A71DE170A47947CB457088,
+                        7787EA86D735156895DDB5E7,
+                        0601E417ADBBF23078259498,
+                        6D22E7D606C92BA7525217DA,
+                        A728CCE868B6A35177322919,
+                        15CA259A62701DF1378BA816,
+                        5A82BDEB21ADA55CA3035962,
+                        F807964D473304B842083290,
+                        79276E992838E5CA87477FD9,
+                        59AC5E1C7DB3C3E01826A002,
+                        69CE6C969924E30FE67AC818,
+                        2A26556D5BE14BE3152B1AD1,
+                        E176CAC6E27C8A65E536C060,
+                        2D09013A2A909BE27E599721,
+                        AA4D3D3651268B398FC7C6FF,
+                        6F52E6E9AE855D045825C242,
+                        80390D312A6CE6B9EF00767C,
+                        5C8A8CA0A7E9C6E32063EC86,
+                        D35A99D2B45B81E2D372B8EA,
+                        05877C033401F3ADD613D317,
+                        D01D19572438D50D03812B51,
+                        FF70F6FFB282F94F3C131761,
+                        B9643A6AB122CC06AD04FEFB,
+                        69840D71442B497CA69BC3AC,
+                        793DEFA0D8E9E9F7D4AB76A7,
+                        0041E37126ECEA11C75F221B,
+                        F29796A876DA5952D658E76D,
+                        48A7540EC080A2ABC33CDDBE,
+                        8BE10F7A50021E99F328E81D,
+                        FB08925342E0142BDCF79F2E,
+                        E37AFFF6E46EBB229B797890,
+                        4C9C14927B205B20AC43D29A,
+                ); name = "Driver"; sourceTree = "<group>"; };
+                807EB2DB10EE3F568D93AF09 /* halmac_8814b */ = {isa = PBXGroup; children = (
+                        939B69AE0D1ED9DE71044AF1,
+                        EA893ACCB10469F128D60C58,
+                        3FD1FFEBE2FE711612221D09,
+                        9001A5C5AFD24BCBD1263AC4,
+                        F018C48A8C10B67E8A31F6D1,
+                        7440AA99B8FAE7CEAF8A2CF9,
+                        6F6861AFEE6DD651E0799239,
+                ); name = "halmac_8814b"; sourceTree = "<group>"; };
+                868797B556B43654E6425F22 /* halmac_88xx_v1 */ = {isa = PBXGroup; children = (
+                        807EB2DB10EE3F568D93AF09,
+                        5EB1D13D4C6FE8C8B1F3997E,
+                        7852BFC9BDFFC1B44283954B,
+                        36A1A77D38919C1BD32D1502,
+                        C7DCCD95845AD0D8C6833EF6,
+                        9F9C29A5C142BFE2A806E395,
+                        0A634E85FB625FE9A996E20B,
+                        17C0BA4F98AEAE7465266A5A,
+                        EF6EEAB92460607E9A66709D,
+                        5008026706ABCF5C4932E5DC,
+                        1697355A07DD461A08F03D76,
+                        2109FD8C8EEDFD92D723B475,
+                        C055C095A965E13AC7EA0F92,
+                ); name = "halmac_88xx_v1"; sourceTree = "<group>"; };
+                1E691935567B7E2B1F5067AA /* halmac */ = {isa = PBXGroup; children = (
+                        868797B556B43654E6425F22,
+                        903488A04D1E87F25E45D089,
+                        A5BD0BB4533280677190DC0C,
+                ); name = "halmac"; sourceTree = "<group>"; };
+                7086200A780FA28F3906822A /* rtl8814b */ = {isa = PBXGroup; children = (
+                        1E691935567B7E2B1F5067AA,
+                ); name = "rtl8814b"; sourceTree = "<group>"; };
+                64CDDC48624073FA5D3D87E0 /* Core */ = {isa = PBXGroup; children = (
+                        7086200A780FA28F3906822A,
+                        BFCE8AD07181FB750CF897AF,
+                        CDBED9D6145846EECEE48B57,
+                        9C67443D2E039BFA0D07BE08,
+                        BE8ED91A2A15C7E0F29984EE,
+                        96ABDA942DEA836353E8001D,
+                        8CA49F0999D4587F0B185A3D,
+                        39B2A789D07EB54CC36AFC0F,
+                        9C161F485D46C088E95515B7,
+                        64F490290695C9FB83EBBE12,
+                        453432F9C24B5983DCB44757,
+                        72EF783096B34E0FAF220B6B,
+                        44A9BCBB9ECD51D5AB37F0CB,
+                        51663E9331EA38C8F350E8F8,
+                        E683DCF9EC995717782A2BB3,
+                        C8D72BF5DE0E78800DF7AAB8,
+                        BADCDACF2B2EDB3C164A1872,
+                        AEF64A4C1D56B82201345001,
+                        C5F1EE3EA161A6ED18F558D7,
+                        8C861BAC9436A8CDD0935C6C,
+                        76665D0866A9A932D04ABC50,
+                        945905554AE51957A6805DD6,
+                        FB2127A71D4E845863E610CF,
+                        62FEDDFF7980C89A1A4F6017,
+                        B3D0EEDE9F140EEF7F7CE731,
+                        31C18DF3AD3EBC02BE985E0F,
+                        5FE8B9191D21408D85CEEDD9,
+                        BF76176317D5A61727425B39,
+                        48EF5511F55F75D883C355C8,
+                        BBC128B30D46DD6F8F4B1A72,
+                        E36CF55806F4EEEEE7455000,
+                        772773E0727A685F7C7552A8,
+                        7799FEC7345861011F9B6C33,
+                        B2B0A48B8A69C533A9C01AE1,
+                        C897C0A3FFB86708E7081112,
+                        ED9CFDF9CCAC8F49F0FFE57B,
+                        48F6DAF56B57EC1E5D71B3D7,
+                        6AA82BA4B6456C7424D5F646,
+                        3A2AB872F83F30716ED095FB,
+                        96CBAFDEB2B543CF41DA1A16,
+                        3C3E82CFFFAADD56D9F21893,
+                        7E9BF89B4D9D269BE930401C,
+                        CA2B98D6264A91232D042676,
+                        13E429E54BC05EBBEDDBF0F6,
+                        DD6A9AD0A05903D481D4B984,
+                        D870283567124D4EBF5E381A,
+                        E9C3C2DFB66EBA1D99F86C00,
+                        BAA4C3C4C24063E3764B9C3F,
+                        AFC955B570BA595D371D9C83,
+                        82F9468ADBB7462F5ACE467D,
+                        643D2609771BB2EC0352E6F2,
+                        14EAF0B7953DEDE91398B2BA,
+                        65EE87802ECC621807EA6920,
+                        5242B4DFE8ECBAA54107903C,
+                        3498C2D0E8266E9F8552DB00,
+                        51989CA19A59581AD50FE2D1,
+                        8E3D583DF5EE063D20A845AF,
+                        D3A036443895D4DB17DDA31B,
+                        4C70A788070555DE0FE18BAC,
+                        592844159132C149C28C4BBF,
+                        2CE7F8A1C4285107E25235CA,
+                        61F1D73EC02CBC20984360F6,
+                        0DA7CD1CC384780AD8C2161B,
+                        6C52BDBF9436A7D799436218,
+                        6C37A5721E8BB93B56951191,
+                        DC180452C584A2D835826E0A,
+                        DB0C673BEA3D9D54E6486626,
+                        762E98E193D82996BB2FEB02,
+                        BA13C96F9B68A1055D193816,
+                        BF3311FE9B5FE903C216DD9F,
+                        6F916F0B8C679C760D80AE27,
+                        707B3E59DBB895558CB5E408,
+                        E1DD8CC1C767B18CED5D732E,
+                        0B750DAAC518E3642A1CB624,
+                        9DB3833C027CE09AFD73E2D8,
+                        5D6C98D84B3F875E52F69209,
+                        3F336EF071620F651E707F43,
+                        2AA64D9D7CB90D9BE8DE4693,
+                        CCEA2CD948BFBA1D634E328A,
+                        CF3DF196B8612AEC898552D7,
+                        0797B7CAE6AB4B9DA0D5E896,
+                        8838F8F401CD8C0E3833EAC8,
+                        A1E8F00D2026C0DE0A0B1F02,
+                        A1E8F00D2026C0DE0A0B1F04,
+                        A1E8F00D2026C0DE0A0B1F06,
+                        A1E8F00D2026C0DE0A0B1F08,
+                ); name = "Core"; sourceTree = "<group>"; };
+                06A0A1B1F47BF134461DC621 /* rtw */ = {isa = PBXGroup; children = (
+                        7A8A84AE2B0D15EB2E1106F9,
+                        EA5AB5E09F13A8272EFF406F,
+                        E960587E91F55D54CE3C6C6D,
+                        2290163992AB7BB7FDA77B03,
+                        6C47F40E8B3FA827FC87CCBA,
+                        754D006A148F61B9670DC737,
+                        29D7F6453D9B7235C2871A3D,
+                        AF2053595E3D2955BEFC5410,
+                        8172819A56BB8B0FE5442952,
+                        B7A049A87253E2CA686A4FC1,
+                        F085E42E659FD46AC1B86505,
+                        4C78189A3F372C8E3DF78062,
+                        33AF490B7926B9F39F6D391C,
+                        F1BC4E8270F12E49C73EFEF2,
+                        AFFA2BC928782CA19C5C61D3,
+                        8404EA087E857C27812BA427,
+                        1C96093EF9F4B7043B964F97,
+                        BF631BC4CFDFFE40C009038E,
+                        5D659D1A66D94792AB7FF9C9,
+                        36D4C6A024EF59F576F91931,
+                        909E6D14E986E59F8B884D6B,
+                        FDE6B6653F2C2B69E20BDB9E,
+                        4832E311AC0E689BB4C741EA,
+                        3910794E55440DD35C02DFC4,
+                        06310B7968E9909D477514EE,
+                        2B1399071E0C93721B305B42,
+                        566F5D86D7C86659D4FA2133,
+                        48CA2B0376A04AE841CE6B74,
+                        AAA569F9CE1AD7C52E7A5491,
+                        E3DAA7AEF25CBDB9104E1ED6,
+                        E38C97AFA5AB519A5E5D10F9,
+                        BCCBD7042A3F732A4BF94C8F,
+                        A54413AD82D163046C47F2DE,
+                        9E609E2F59E719CB37E1971D,
+                        D3A81081CB67459993AFC8AC,
+                        B5A3154033F3F490B6191EE3,
+                        2476D534D26FFD99DAF4AE63,
+                        816CCA2B54FBC78AB711B59F,
+                        E181C02BFA8A87C7E00ECD2F,
+                        2B9EC64C29FCCE90372FDCB3,
+                        9AE0A47C65C41744C8D6D1E8,
+                        12FDAE4EDFBA34F7CBC10EC7,
+                        A631E92CDFDC4C8457DD49F4,
+                        65EDCB9B1ED926F720C02CFE,
+                        9E34380181B56DC57CEBEEE3,
+                        3E62FF55A029851F8C7EB9B7,
+                        E2900EC5EF9196B2E3F7BA91,
+                        469250E3A08B974F9BB1CB37,
+                        9E870F165FC8C384B19C5F7F,
+                        F6E22FD570C4912B4F1E7CB6,
+                        F5DBFD69B070CEC0069EBBED,
+                        9360AAE4073EB801629521E5,
+                        84621D90372F56377EE51A40,
+                        2A497C1BA0CB490348A2B3D2,
+                        B4F566886FA772F6B80EC0FF,
+                        11F72AD03962E85AFD3014F7,
+                        AA3662458EF9FAB0D1A68B82,
+                        CEDD73F66E445B9AF9A47F02,
+                        C6D9E05044DB8EC06B2EDC12,
+                        6266B47896E5D2010E0AF13C,
+                        FCB6200C9CFCB85EB47F4D72,
+                        0DA54E798878066EA590D2E9,
+                        8A1E4E6565512F448EABD058,
+                        BFD64EFE267309E6493B8502,
+                        5D96479D077592C52FA9EFD2,
+                        B1BBAEE3E10BC1E58E139F95,
+                        F4AF605FFD1507377C9798AA,
+                        B6224B88B9CD51089D00F582,
+                        9AAC40C815759450ACAB5EDA,
+                        4C518012D61882861C7639CF,
+                        A3F932F7DB810F2B85D026A1,
+                        4EC1E264A22CEC62F7FB9AB2,
+                        22005D5E8B73BD68DCDEAB89,
+                        FAD56AA8E05898D4876A322F,
+                        6E32B927B7B4730B563EA38D,
+                        5D00E6C5953D66420F6B0654,
+                        4D8BAD7798A87EF1045A2885,
+                        E7937F1DDA03AFB77B829F14,
+                        76BD2EC666C522891B33846B,
+                        8FD835EF1775DCF2AC2B3261,
+                        349266770C3BC8633F7E3427,
+                        F7879492BCC8D19EDA14EE53,
+                        D18E1069F0BF4381057068F5,
+                        E762BA3EE4165A6BA6DE8A4A,
+                        C273EE951ABE65FDEA0C5EB0,
+                        965323CCFF03FBDCCCE671A1,
+                        8BE7264CD975F9E6D4C5F4AB,
+                        604A2CB7E69A266528E672F6,
+                ); name = "rtw"; sourceTree = "<group>"; };
+                DA0763BEBC1CCFBD7D1DB552 /* Headers */ = {isa = PBXGroup; children = (
+                        06A0A1B1F47BF134461DC621,
+                ); name = "Headers"; sourceTree = "<group>"; };
+                A8B4C9E0BB1D99AF0D6CA7E1 /* crypto */ = {isa = PBXGroup; children = (
+                        67818F0B4C3E513201FECBB4,
+                        95B8CEDBE9290D1500D464D8,
+                        887C265704A721A8D3DD9156,
+                        AC1B61884A4D317402EA18B7,
+                        BD78C70DEC2848EF2C2A9F16,
+                        9A10933C5E6CD1F181BB19E8,
+                        A89823A6EF19D3BA35D42C4C,
+                        30205F4C42CDA61005A46994,
+                        70E9E38CE45AF0462193C586,
+                        273BC2723E089CF9ABD0B3FB,
+                ); name = "crypto"; sourceTree = "<group>"; };
+                E00EFF0395A16D9750C55647 /* net80211 */ = {isa = PBXGroup; children = (
+                        FABA99F2FB4CCF277844B958,
+                        C1D0F39DC317BFE518FEBDC6,
+                        92E238A430D9012C2F904A27,
+                        79E60E5F79628F0A2163A14E,
+                        D82D419444A0C5D01A70F9EF,
+                        EFF87ED52AD366CB326B18DB,
+                        03C02FA0110F788C7D018A8C,
+                        6597049321792A8CBB8AE1C1,
+                        0CDFCB8F24E8064E5FF4A5FC,
+                        8DE55E746BC21812BC1A43FC,
+                        1387EE9FDAC7FFAC9C839D01,
+                        3CB8AEC898A28033EE225545,
+                        5133DA8DBE9221FFA2357015,
+                        FB2DB463919668843DC6AED8,
+                        CBA77FC396AAD165DADACA16,
+                        D0DA7876D2E3675280A87F91,
+                        0E26FD64BAF74680178DB6BC,
+                ); name = "net80211"; sourceTree = "<group>"; };
+                10EEF0D4FFADD93E60C753E9 /* sys */ = {isa = PBXGroup; children = (
+                        17C4A89B1A34572BF6338C13,
+                        4D449284A070934B480B7E19,
+                        A7149973FE93B66A971558BE,
+                ); name = "sys"; sourceTree = "<group>"; };
+                B0459CFBDCACB106C34263D5 /* openbsd */ = {isa = PBXGroup; children = (
+                        A8B4C9E0BB1D99AF0D6CA7E1,
+                        E00EFF0395A16D9750C55647,
+                        10EEF0D4FFADD93E60C753E9,
+                ); name = "openbsd"; sourceTree = "<group>"; };
+                E70379220538B4201F575EF9 /* itl80211 */ = {isa = PBXGroup; children = (
+                        B0459CFBDCACB106C34263D5,
+                ); name = "itl80211"; sourceTree = "<group>"; };
+                86A9EE11E49D86769A0568EB /* rtwn */ = {isa = PBXGroup; children = (
+                        04A5382B88DAD92C9FBA555B,
+                ); name = "rtwn"; sourceTree = "<group>"; };
+                B7BA4FB8FE0E1EEB046AD771 /* Stack */ = {isa = PBXGroup; children = (
+                        E70379220538B4201F575EF9,
+                        86A9EE11E49D86769A0568EB,
+                ); name = "Stack"; sourceTree = "<group>"; };
+                20E0FD1EF7E5D81FF19CF672 /* Firmware */ = {isa = PBXGroup; children = (
+                        68A1AF3D5DA315BCF1236AEC,
+                        102EE960B50AA33F289AED93,
+                        37BCBAECADCD97C9F37E5B87,
+                ); name = "Firmware"; sourceTree = "<group>"; };
+                DE07B0A2F7C982F7FFF0E716 /* Docs */ = {isa = PBXGroup; children = (
+                        B7130DB4A1FDC9539AAAC27F,
+                        E516E511F9ACF60C52CA594A,
+                        6B2707E89C2D38F64ACC2966,
+                        606B93515E19D18D82F28DD8,
+                        1BAC0CADADBC3204776DCF21,
+                ); name = "Docs"; sourceTree = "<group>"; };
+                68FF5A982796F9E7B57AFD96 /* Main */ = {isa = PBXGroup; children = (
+                        4A025D065D041B7A83342F74,
+                        64CDDC48624073FA5D3D87E0,
+                        DA0763BEBC1CCFBD7D1DB552,
+                        B7BA4FB8FE0E1EEB046AD771,
+                        20E0FD1EF7E5D81FF19CF672,
+                        DE07B0A2F7C982F7FFF0E716,
+                        0DDF832AA8FA2053BFE02F7E,
+                ); sourceTree = "<group>"; };
+                0DDF832AA8FA2053BFE02F7E /* Products */ = {isa = PBXGroup; children = (
+                        812856A09EF8D3B273AAA83E,
+                ); name = Products; sourceTree = "<group>"; };
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+                55086829FEC1051699891A7E = {isa=PBXNativeTarget; buildConfigurationList=2397147A0A69D7DF5518C9DD; buildPhases=(0B91B4A43C1E39E408D7334A,5A5A18C1596F39266D846CFD,7E027AE1CBDD7CD548CCE7C2,); buildRules=(); dependencies=(); name=macOS-RTL-WIFI; productName=macOS-RTL-WIFI; productReference=812856A09EF8D3B273AAA83E; productType="com.apple.product-type.kernel-extension";};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+                7FC4F43EF74677DE02963D24 = {isa=PBXProject; attributes={LastUpgradeCheck=2600;}; buildConfigurationList=39F59D0BD3088D9F4684BFAA; compatibilityVersion="Xcode 14.0"; developmentRegion=en; knownRegions=(en,Base); mainGroup=68FF5A982796F9E7B57AFD96; productRefGroup=0DDF832AA8FA2053BFE02F7E; projectDirPath=""; projectRoot=""; targets=(55086829FEC1051699891A7E,); };
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+                0B91B4A43C1E39E408D7334A = {isa=PBXSourcesBuildPhase; buildActionMask=2147483647; files=(
+                        326E0CA692FD9ABC595DA4FF,
+                        5418FACD732ACDEA54AD2656,
+                        0CBD0347C64E480F80159FFB,
+                        D4C1961DB03A055CC936A173,
+                        321FE7B40F3E1FA1C0483D02,
+                        B7A13A140541556FDEC954B6,
+                        CFC3F149CAE284CE8EF25A0D,
+                        DA513D89E4300137ACDAEF58,
+                        1D22EEBB3978EE895213B70F,
+                        51A8019A8F4EE180DC4F0AC6,
+                        E8ADF94355CC5708A411AA89,
+                        2F24056AC0EE6E374B191A4E,
+                        67F6FC06E934DE7A37BE8906,
+                        77B261F2AE79B857AF334063,
+                        E72999F744748F0595D2AA5E,
+                        8101F0C7B55BCC70CF93E395,
+                        7F04BED672EF3DCC8C5AD182,
+                        B22F181E82436D4F9EA0550C,
+                        75B6A209699624D86848845F,
+                        ADCCB194D39D31CFCDAFA9DD,
+                        5C1CD5EA7767451A19CFD9D4,
+                        02A3F26FB292B2414BDF78A5,
+                        D2D3D3C33688B885879E6F24,
+                        4F6791EEFB0DDC03445E3DDD,
+                        1C398174D04E24EFD9A18DF5,
+                        AF1D38B79B664EFCC3D28042,
+                        D9EC44F7AF517769AD0FE237,
+                        99B40A539E8127843E7075D4,
+                        7C8799A2C287ED1520F0B1AA,
+                        47BCCE5EB1A21BD1CDF6F868,
+                        D6C0E406C31AC4D8844E7C2C,
+                        C89EBD10E9D8F545AB241251,
+                        ED1ACCB1EB3AD41E024CC9B0,
+                        D484B4512FE00E058F597C9C,
+                        A18E0582A2F20CB3B5644ED5,
+                        34E7688C7E1FB5C5B1D59F2E,
+                        A776DFF9B0B2B4DC710B8680,
+                        B9B8EF2363FDF88C7E3FE7B6,
+                        2755F54F875389909DCA9441,
+                        6DF77E957711B246C90A0F5E,
+                        647ADED4FD0F2907EAEF597C,
+                        DEEA0578BCE19A2491ACB76D,
+                        5F5293B0C7474DF6CDB5B2E8,
+                        718B704F995355A067770805,
+                        46328EA5F7531A94F96188FE,
+                        84DB3265C50C1BF7239A8FCC,
+                        D650D2DD3FEBF724D92229E7,
+                        D2ABB995EC3608D15D34913F,
+                        808C9173A8C476CC8F66AFBF,
+                        C427C8ACBE6681744D19623E,
+                        413EF758CBCB5E416741EE8D,
+                        5CDCCD43FFB899472F5D508B,
+                        F8278C32499DDFD75E9EBE33,
+                        C1CCC15F007B550278C2A49E,
+                        320EA5E73CF0536A4184DCAB,
+                        1DF0ADA5D0E19C13E480D4A7,
+                        F16862694932C697F9C17110,
+                        B5013AC709180FA8ECEED5A9,
+                        86A74749EB7170A19457A95D,
+                        321C71EFFEFF30B59235F5A9,
+                        E43FF65AC6595DA0A491727C,
+                        94924308381ED0BF657B43AE,
+                        8BACA514692C1C94E93FC8AF,
+                        C82091FE8406AB1E45E98696,
+                        02462CD1574E6462C781B613,
+                        F3A53E057876830ECAA7D7E3,
+                        7B219EDBB97B4590413DB226,
+                        FDF810177D2A6ABF9EA9D042,
+                        0A8C25BC72DD686CF22C771F,
+                        676457E21FC8E3DB963048E0,
+                        5715844FC09405FD3DE7BF9B,
+                        A1E85AE5B2A538ABA5634257,
+                        50C87A1BEA6935991B71B39A,
+                        B429600E398EAD22FDF49EE2,
+                        0E0F9D3D1F0095EF856E80E5,
+                        42E2CBE76DB0C3D6318EBF2D,
+                        8851B44F1898D96F04B771BD,
+                        63D18AF8E532DA12F87B7FC5,
+                        30A8BD171262972EC994BE84,
+                        B09809FEEA5FFA9F3910C1C0,
+                        503A83D17FF6FDE09DB62F51,
+                        B031019248BA209B4583C732,
+                        220DE024622720F81044AA8B,
+                        29E57FC7598E003CBE781EFD,
+                        BE0D27F4E250B758C574FB7C,
+                        7A7F836B6BC2A27CEF386351,
+                        9DB5B9EBEC4C5EAE99865241,
+                        FB1091100F662B49D0057791,
+                        8A523A24D36B3F6A9AD5619E,
+                        C7446E6079F7C9511AAA1EB5,
+                        E30F2580CAAC9383C1B66C14,
+                        1F116FE5B03653B92F4C4CAE,
+                        570AD8023CDA8B7443BBE445,
+                        360F03141C42D55538881A46,
+                        6CD3F0551BBDFE5CDF8D939F,
+                        B79383EA775D34623CE15840,
+                        F2D465EE67D7786C83280CBE,
+                        E8129C61CEC2544336A6FAFB,
+                        D528783B850C07036FC23E12,
+                        6BB8CF568FE8C18B095AC6C1,
+                        D94CF51268D2C7A89D86A6AC,
+                        C03D441E17D3D70781A36ABB,
+                        1EB8C416BD4F2476385CD4FB,
+                        4A52E74BE042703B5F3061D2,
+                        EFB24D204CDA373A1CE9BF4F,
+                        D16E86B3A0269FEB3627EBC8,
+                        380C0D410659D53DEF8D05EF,
+                        86B98A3F9D7ECD302AFF839D,
+                        B24174AC88DA731E7A85460A,
+                        8351DD84885922E7AA9420CE,
+                        B7295FA7A31555D2CD52D612,
+                        4C15D2E7B1B9F39D551B27B2,
+                        9C15E6C7EF471512B0FB7864,
+                        3AF434EAC2F716DBA2C996C0,
+                        A4EA77312B10B5577C3ACD2D,
+                        940FA9B16DD8BB9CA6805F50,
+                        A6D0F4AED7B19467D3E37D7C,
+                        BCACC9415ED66C4D01E4E53C,
+                        3BCAA46A3ACE44EB13E48619,
+                        F8ACF71C7F2982BB7EBCB742,
+                        12287914860724338FC4FF43,
+                        7916832421F6BA27CE494182,
+                        D5F25631C66402394F17CF80,
+                        4FC8336F0F9A0C3B5F37044E,
+                        4600FEE887DB1910F780E726,
+                        31C94F646A907B2CE12895CE,
+                        5B2EEEB2CB4F5571266AF06C,
+                        5D0A077DBC129DD84A3B2F9E,
+                        994B37948DD88012B926EF38,
+                        3ABA38A41D64FBD7A2473BED,
+                        EE99DB445848B5CFB1DDDBD5,
+                        0E1066EAFE841995525C0FF2,
+                        2EA17E4DCE94F89E026B9FAD,
+                        7CBE44AD8DD6C2592AFC0DD8,
+                        BFAE7A9109F4932A9262673C,
+                        BADF2D0052CA8735AC76BC05,
+                        0B439313081172E8BA3D00FC,
+                        DBDCB910540FE3E710E7F211,
+                        3B4F3AF96D1418342CD3C1A4,
+                        A1E8F00D2026C0DE0A0B1F01,
+                        A1E8F00D2026C0DE0A0B1F03,
+                        A1E8F00D2026C0DE0A0B1F05,
+                        A1E8F00D2026C0DE0A0B1F07,
+                );
+                runOnlyForDeploymentPostprocessing=0; };
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+                5A5A18C1596F39266D846CFD = {isa=PBXShellScriptBuildPhase; buildActionMask=2147483647; files=(); alwaysOutOfDate=1; name="Check imports"; runOnlyForDeploymentPostprocessing=0; shellPath=/bin/bash; shellScript="set -euo pipefail\nLEAK=\"$(nm -u \"$TARGET_BUILD_DIR/$EXECUTABLE_PATH\" | awk 'NF { sym=$NF; if (sym ~ /^_(rtw_|rtwn_|ieee80211_)/) print sym; else if (sym ~ /^__Z/ && sym ~ /[0-9]RTW[A-Za-z]/) print sym; else if (sym ~ /^__Z/ && sym ~ /[0-9]CTimeout/) print sym; else if (sym ~ /^_(fWorkloop|fCommandGate)$/) print sym }' | LC_ALL=C sort -u)\"\nif [[ -n \"$LEAK\" ]]; then\n  printf 'broken import: %s\\n' \"$LEAK\" >&2\n  exit 1\nfi\nprintf 'imports ok\\n'\n"; };
+                7E027AE1CBDD7CD548CCE7C2 = {isa=PBXShellScriptBuildPhase; buildActionMask=2147483647; files=(); alwaysOutOfDate=1; name="Sign"; runOnlyForDeploymentPostprocessing=0; shellPath=/bin/bash; shellScript="set -euo pipefail\n/usr/bin/codesign --force --sign - \"$TARGET_BUILD_DIR/$FULL_PRODUCT_NAME\"\nprintf 'signed %s\\n' \"$FULL_PRODUCT_NAME\"\n"; };
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+                E3706B610A27473909D1CFA8={isa=XCBuildConfiguration;buildSettings={SDKROOT="macosx";ARCHS="x86_64";ONLY_ACTIVE_ARCH="NO";ALWAYS_SEARCH_USER_PATHS="NO";CLANG_CXX_LANGUAGE_STANDARD="gnu++14";GCC_C_LANGUAGE_STANDARD="c11";OTHER_CFLAGS=("$(inherited)","-mkernel","-fapple-kext");GCC_ENABLE_CPP_EXCEPTIONS="NO";GCC_ENABLE_CPP_RTTI="NO";CLANG_ENABLE_MODULES="NO";CODE_SIGNING_ALLOWED="NO";ENABLE_USER_SCRIPT_SANDBOXING="NO";MACOSX_DEPLOYMENT_TARGET="11.0";GCC_SYMBOLS_PRIVATE_EXTERN="YES";GCC_INLINES_ARE_PRIVATE_EXTERN="YES";KERNEL_EXTENSION_HEADER_SEARCH_PATHS="$(SDKROOT)/System/Library/Frameworks/Kernel.framework/Headers";KERNEL_FRAMEWORK_HEADERS="$(SDKROOT)/System/Library/Frameworks/Kernel.framework/Headers";GCC_PREPROCESSOR_DEFINITIONS=("$(inherited)","KERNEL=1","KERNEL_PRIVATE=1","DRIVER_PRIVATE=1","IEEE80211_STA_ONLY=1","__PRIVATE_SPI__=1");HEADER_SEARCH_PATHS=("$(PROJECT_DIR)/Stack/itl80211/openbsd","$(PROJECT_DIR)/Stack/itl80211/linux","$(PROJECT_DIR)/Stack/itl80211","$(PROJECT_DIR)/Headers","$(PROJECT_DIR)/Driver","$(PROJECT_DIR)/Core/rtl8814b/halmac","$(PROJECT_DIR)/Stack/rtwn","$(inherited)");OTHER_CPLUSPLUSFLAGS=("$(inherited)","-mkernel","-fapple-kext","-nostdinc++","-isystem","$(PROJECT_DIR)/libs/kstl","-fno-builtin","-Wno-deprecated-register","-Wno-c++17-extensions","-Wno-macro-redefined","-Wno-format","-Werror=return-type");GCC_OPTIMIZATION_LEVEL="0";};name=Debug;};
+                9EFFC44186240736845942AF={isa=XCBuildConfiguration;buildSettings={SDKROOT="macosx";ARCHS="x86_64";ONLY_ACTIVE_ARCH="NO";ALWAYS_SEARCH_USER_PATHS="NO";CLANG_CXX_LANGUAGE_STANDARD="gnu++14";GCC_C_LANGUAGE_STANDARD="c11";OTHER_CFLAGS=("$(inherited)","-mkernel","-fapple-kext");GCC_ENABLE_CPP_EXCEPTIONS="NO";GCC_ENABLE_CPP_RTTI="NO";CLANG_ENABLE_MODULES="NO";CODE_SIGNING_ALLOWED="NO";ENABLE_USER_SCRIPT_SANDBOXING="NO";MACOSX_DEPLOYMENT_TARGET="11.0";GCC_SYMBOLS_PRIVATE_EXTERN="YES";GCC_INLINES_ARE_PRIVATE_EXTERN="YES";KERNEL_EXTENSION_HEADER_SEARCH_PATHS="$(SDKROOT)/System/Library/Frameworks/Kernel.framework/Headers";KERNEL_FRAMEWORK_HEADERS="$(SDKROOT)/System/Library/Frameworks/Kernel.framework/Headers";GCC_PREPROCESSOR_DEFINITIONS=("$(inherited)","KERNEL=1","KERNEL_PRIVATE=1","DRIVER_PRIVATE=1","IEEE80211_STA_ONLY=1","__PRIVATE_SPI__=1");HEADER_SEARCH_PATHS=("$(PROJECT_DIR)/Stack/itl80211/openbsd","$(PROJECT_DIR)/Stack/itl80211/linux","$(PROJECT_DIR)/Stack/itl80211","$(PROJECT_DIR)/Headers","$(PROJECT_DIR)/Driver","$(PROJECT_DIR)/Core/rtl8814b/halmac","$(PROJECT_DIR)/Stack/rtwn","$(inherited)");OTHER_CPLUSPLUSFLAGS=("$(inherited)","-mkernel","-fapple-kext","-nostdinc++","-isystem","$(PROJECT_DIR)/libs/kstl","-fno-builtin","-Wno-deprecated-register","-Wno-c++17-extensions","-Wno-macro-redefined","-Wno-format","-Werror=return-type");GCC_OPTIMIZATION_LEVEL="s";};name=Release;};
+                D1DB057A4203AEED63FCA1EF={isa=XCBuildConfiguration;buildSettings={PRODUCT_NAME=macOS-RTL-WIFI;PRODUCT_BUNDLE_IDENTIFIER=com.rtlwifi.macos.driver;MODULE_NAME=com.rtlwifi.macos.driver;MODULE_VERSION="1.0.0";KERNEL_EXTENSION=YES;STRIP_STYLE="non-global";SEPARATE_STRIP=YES;INFOPLIST_FILE=Driver/Info.plist;GENERATE_INFOPLIST_FILE=NO;WRAPPER_EXTENSION=kext;SKIP_INSTALL=YES;CODE_SIGNING_ALLOWED=NO;};name=Debug;};
+                A10976025B5481CD7CFDEFB5={isa=XCBuildConfiguration;buildSettings={PRODUCT_NAME=macOS-RTL-WIFI;PRODUCT_BUNDLE_IDENTIFIER=com.rtlwifi.macos.driver;MODULE_NAME=com.rtlwifi.macos.driver;MODULE_VERSION="1.0.0";KERNEL_EXTENSION=YES;STRIP_STYLE="non-global";SEPARATE_STRIP=YES;INFOPLIST_FILE=Driver/Info.plist;GENERATE_INFOPLIST_FILE=NO;WRAPPER_EXTENSION=kext;SKIP_INSTALL=YES;CODE_SIGNING_ALLOWED=NO;};name=Release;};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+                39F59D0BD3088D9F4684BFAA={isa=XCConfigurationList;buildConfigurations=(E3706B610A27473909D1CFA8,9EFFC44186240736845942AF,);defaultConfigurationIsVisible=0;defaultConfigurationName=Release;};
+                2397147A0A69D7DF5518C9DD={isa=XCConfigurationList;buildConfigurations=(D1DB057A4203AEED63FCA1EF,A10976025B5481CD7CFDEFB5,);defaultConfigurationIsVisible=0;defaultConfigurationName=Release;};
+/* End XCConfigurationList section */
+        };
+        rootObject = 7FC4F43EF74677DE02963D24;
+}

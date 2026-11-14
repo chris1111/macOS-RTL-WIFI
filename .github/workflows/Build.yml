@@ -1,0 +1,205 @@
+# Builds the x86_64 kext and the full OC/Clover installer on every push
+# (and on demand) on a macOS runner, then publishes the "1.0.3" GitHub
+# release with ONE asset:
+#
+#   Release.zip  containing
+#     - macOS-RTL-WIFI.kext
+#     - Wireless USB macOS-RTL-WIFI.pkg
+#     - Support Donate.html
+#
+# If the release already exists, its assets are replaced on every
+# successful run.
+#
+# The runner is pinned to macos-15 on purpose: the kext is Intel-only
+# (ARCHS=x86_64 is pinned in the Xcode project, so an Apple silicon runner
+# cross-builds it correctly), and the image toolchain is stable.
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Kext + installer (macOS)
+    runs-on: macos-15
+    timeout-minutes: 60
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Show the toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          sw_vers
+          xcode-select -p
+          xcodebuild -version
+          xcrun --sdk macosx --show-sdk-path
+          git --version
+
+      - name: Build the kext and the installer package
+        shell: bash
+        run: |
+          set -euo pipefail
+          # One command builds the x86_64 kext, assembles the pkg with
+          # pkgbuild/pkgutil and stages Support Donate.html next to it
+          # (Build/Release/).
+          bash ./Create_Build.tool 2>&1 | tee "${RUNNER_TEMP}/create-build.log"
+
+      - name: Validate the build products
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # --- kext: binary present, ad-hoc signature valid, renamed bundle id ---
+          KEXT="Build/Release/macOS-RTL-WIFI.kext"
+          test -d "${KEXT}"
+          test -s "${KEXT}/Contents/MacOS/macOS-RTL-WIFI"
+          codesign --verify --strict "${KEXT}"
+          BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' \
+            "${KEXT}/Contents/Info.plist")"
+          [[ "${BUNDLE_ID}" == "com.rtlwifi.macos.driver" ]] || {
+            echo "Wrong bundle id: ${BUNDLE_ID}" >&2
+            exit 1
+          }
+
+          # --- installer package ---
+          PKG="Build/Release/Wireless USB macOS-RTL-WIFI.pkg"
+          test -s "${PKG}"
+
+          # --- donation page: must carry the PayPal donation infos ---
+          HTML="Build/Release/Support Donate.html"
+          test -s "${HTML}"
+          grep -q "leblond1111@gmail.com" "${HTML}" || {
+            echo "Support Donate.html is missing the PayPal donation infos" >&2
+            exit 1
+          }
+
+      - name: Package Release.zip
+        shell: bash
+        run: |
+          set -euo pipefail
+          STAGE="${RUNNER_TEMP}/stage"
+          RELEASE="${RUNNER_TEMP}/release"
+          rm -rf "${STAGE}" "${RELEASE}"
+          mkdir -p "${STAGE}" "${RELEASE}"
+
+          # Stage the three products flat (ditto keeps resource forks, so the
+          # PayPal custom icon on Support Donate.html survives).
+          ditto "Build/Release/macOS-RTL-WIFI.kext"            "${STAGE}/macOS-RTL-WIFI.kext"
+          ditto "Build/Release/Wireless USB macOS-RTL-WIFI.pkg" "${STAGE}/Wireless USB macOS-RTL-WIFI.pkg"
+          ditto "Build/Release/Support Donate.html"             "${STAGE}/Support Donate.html"
+
+          # Archive the staging directory as one source, with its contents at
+          # the zip root.
+          cd "${STAGE}"
+          ditto -c -k --sequesterRsrc . "${RELEASE}/Release.zip"
+
+          # Roundtrip: unzip and verify everything made it in intact.
+          CHECK="${RUNNER_TEMP}/zipcheck"
+          rm -rf "${CHECK}"
+          mkdir -p "${CHECK}"
+          ditto -x -k "${RELEASE}/Release.zip" "${CHECK}"
+          test -d "${CHECK}/macOS-RTL-WIFI.kext"
+          test -s "${CHECK}/macOS-RTL-WIFI.kext/Contents/MacOS/macOS-RTL-WIFI"
+          codesign --verify --strict "${CHECK}/macOS-RTL-WIFI.kext"
+          test -s "${CHECK}/Wireless USB macOS-RTL-WIFI.pkg"
+          test -s "${CHECK}/Support Donate.html"
+          grep -q "leblond1111@gmail.com" "${CHECK}/Support Donate.html"
+          echo "Release.zip verified:"
+          unzip -l "${RELEASE}/Release.zip" | sed -n '1,20p'
+          shasum -a 256 "${RELEASE}/Release.zip"
+
+      - name: Upload build log
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: create-build-log
+          path: ${{ runner.temp }}/create-build.log
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload Release.zip as workflow artifact
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: macOS-RTL-WIFI-1.0.3-release-assets
+          path: ${{ runner.temp }}/release/Release.zip
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Publish the 1.0.3 release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="1.0.3"
+          cd "${RUNNER_TEMP}/release"
+          ASSETS=("Release.zip")
+          for asset in "${ASSETS[@]}"; do
+            [[ -e "$asset" ]] || {
+              echo "Missing release asset: $asset" >&2
+              exit 1
+            }
+          done
+          KEXT_VER="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' \
+            "${GITHUB_WORKSPACE}/Build/Release/macOS-RTL-WIFI.kext/Contents/Info.plist" \
+            2>/dev/null || printf '1.0.3')"
+          cat > "${RUNNER_TEMP}/release-notes.md" <<EOF
+          Automated release build of **macOS-RTL-WIFI** produced by GitHub
+          Actions from this source tree.
+
+          - **Kext:** macOS-RTL-WIFI ${KEXT_VER} - x86_64 (Intel), ad-hoc signed,
+            bundle id com.rtlwifi.macos.driver
+          - **Full installer:** Wireless USB macOS-RTL-WIFI.pkg - delivers the
+            kext to the EFI partition for OpenCore and Clover, with the original
+            Realtek StatusBarApp and its launch agent
+          - **Support Donate.html** - PayPal donation page
+
+          ### Downloads
+          - **Release.zip** - everything in one download:
+            - macOS-RTL-WIFI.kext - the driver (inject via OpenCore or Clover)
+            - Wireless USB macOS-RTL-WIFI.pkg - recommended full installer
+              (OpenCore + Clover delivery to the EFI partition, StatusBarApp
+              and launch agent)
+            - Support Donate.html - PayPal donation page
+
+          ### Compatibility and scope
+          - Intel Macs, macOS 11 Big Sur through macOS 26 Tahoe
+          - Station mode, 2.4 GHz (802.11b/g), WPA2-Personal
+          - Realtek RTL8188EU / RTL8192EU USB adapters - see the README for the
+            full supported-adapter list
+
+          ### First install notes
+          - The kext bundle id is com.rtlwifi.macos.driver; on the very first
+            load macOS asks for approval in System Settings > Privacy & Security,
+            then restart.
+          - The installer choice "Uninstall Utility" removes the driver from
+            the ESP and from the OpenCore config.plist.
+
+          This CI build proves compilation and bundle validation, not operation
+          on every adapter or macOS configuration. See the README for
+          installation guidance and limitations.
+          EOF
+          sed -i '' -e 's/^          //' "${RUNNER_TEMP}/release-notes.md"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${ASSETS[@]}" --clobber --repo "$GITHUB_REPOSITORY"
+            echo "::notice::Release ${TAG} already existed; its assets were replaced."
+          else
+            gh release create "$TAG" "${ASSETS[@]}" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "macOS-RTL-WIFI 1.0.3" \
+              --notes-file "${RUNNER_TEMP}/release-notes.md"
+          fi

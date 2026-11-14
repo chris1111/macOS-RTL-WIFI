@@ -1,0 +1,72 @@
+// kstl <array> — own kernel-safe subset, part of this project (GPL-2.0).
+// Fixed-size container, std::array-compatible. Stays an aggregate so brace
+// initialization and zero-initialization (`Mac bssid{};`) behave like the
+// real std::array. No allocation, no exceptions.
+#ifndef KSTL_ARRAY
+#define KSTL_ARRAY
+
+#include <cstddef>
+
+namespace std {
+
+template <class T, size_t N>
+struct array {
+    using value_type = T;
+    using size_type = size_t;
+    using difference_type = ptrdiff_t;
+    using pointer = T*;
+    using const_pointer = const T*;
+    using reference = T&;
+    using const_reference = const T&;
+    using iterator = pointer;
+    using const_iterator = const_pointer;
+
+    T __elems_[N];
+
+    constexpr size_type size() const noexcept { return N; }
+    constexpr bool empty() const noexcept { return N == 0; }
+    constexpr reference operator[](size_type i) noexcept { return __elems_[i]; }
+    constexpr const_reference operator[](size_type i) const noexcept { return __elems_[i]; }
+    // No bounds assertion and no out_of_range: kernel code, no exceptions.
+    constexpr reference at(size_type i) noexcept { return __elems_[i]; }
+    constexpr const_reference at(size_type i) const noexcept { return __elems_[i]; }
+    constexpr reference front() noexcept { return __elems_[0]; }
+    constexpr const_reference front() const noexcept { return __elems_[0]; }
+    constexpr reference back() noexcept { return __elems_[N ? N - 1 : 0]; }
+    constexpr const_reference back() const noexcept { return __elems_[N ? N - 1 : 0]; }
+    constexpr pointer data() noexcept { return __elems_; }
+    constexpr const_pointer data() const noexcept { return __elems_; }
+    constexpr iterator begin() noexcept { return __elems_; }
+    constexpr const_iterator begin() const noexcept { return __elems_; }
+    constexpr const_iterator cbegin() const noexcept { return __elems_; }
+    constexpr iterator end() noexcept { return __elems_ + N; }
+    constexpr const_iterator end() const noexcept { return __elems_ + N; }
+    constexpr const_iterator cend() const noexcept { return __elems_ + N; }
+
+    void fill(const T& value) {
+        for (size_type i = 0; i < N; ++i) __elems_[i] = value;
+    }
+    void swap(array& other) {
+        for (size_type i = 0; i < N; ++i) {
+            T t = __elems_[i];
+            __elems_[i] = other.__elems_[i];
+            other.__elems_[i] = t;
+        }
+    }
+};
+
+template <class T, size_t N>
+constexpr bool operator==(const array<T, N>& a, const array<T, N>& b) {
+    for (size_t i = 0; i < N; ++i)
+        if (!(a.__elems_[i] == b.__elems_[i])) return false;
+    return true;
+}
+
+template <class T, size_t N>
+constexpr bool operator!=(const array<T, N>& a, const array<T, N>& b) {
+    return !(a == b);
+}
+
+} // namespace std
+
+#endif

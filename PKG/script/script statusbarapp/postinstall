@@ -1,0 +1,40 @@
+#!/bin/sh
+# By chris1111
+#
+
+. /etc/rc.common
+
+echo "PostInstall_UI.command"
+sleep 2
+ditto -x -k --sequesterRsrc --rsrc /Private/tmp/StatusBarApp.zip "/Library/Application Support/WLAN/"
+cp -rp /Private/tmp/RtWlanHelper "/Library/Application Support/WLAN/"
+rm -rf /Private/tmp/StatusBarApp.zip
+rm -rf /Private/tmp/RtWlanHelper
+sleep 1
+#Filename of Application.
+APP="StatusBarApp"
+HELPER="RtWlanHelper"
+INF_NAME="netrtwlanu.inf"
+#APP location.
+ROOT_PATH="/Library/Application Support/WLAN"
+AUX_PATH="com.realtek.utility.wifi"
+UTILITY_SOCK_NAME="/var/tmp/com.realtek.utility.statusbar.socket"
+LAUNCH_AGENT_PLIST="/Library/LaunchAgents/Wlan.Software.plist"
+sudo chmod -R 777 "$ROOT_PATH/$APP.app"
+sudo chmod -R 777 "$ROOT_PATH/$AUX_PATH/"
+sleep 1
+sudo chown -R root:wheel "$ROOT_PATH/$APP.app"
+sudo chown -R root:wheel "$ROOT_PATH/$HELPER"
+# chmod 777 is not work.
+# [MACOS-15]
+chmod -R 777 $UTILITY_SOCK_NAME
+sleep 2
+open "/Library/Application Support/WLAN/StatusBarApp.app"
+sudo chown -R root:wheel $LAUNCH_AGENT_PLIST
+sleep 1
+sudo chmod -R 555 $LAUNCH_AGENT_PLIST
+echo "Done"
+
+
+
+

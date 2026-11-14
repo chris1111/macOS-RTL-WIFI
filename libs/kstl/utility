@@ -1,0 +1,77 @@
+// kstl <utility> — own kernel-safe subset, part of this project (GPL-2.0).
+#ifndef KSTL_UTILITY
+#define KSTL_UTILITY
+
+#include "type_traits"
+
+namespace std {
+
+template <class T>
+constexpr typename remove_reference<T>::type&& move(T&& v) noexcept {
+    return static_cast<typename remove_reference<T>::type&&>(v);
+}
+
+template <class T>
+constexpr T&& forward(typename remove_reference<T>::type& v) noexcept {
+    return static_cast<T&&>(v);
+}
+
+template <class T>
+constexpr T&& forward(typename remove_reference<T>::type&& v) noexcept {
+    return static_cast<T&&>(v);
+}
+
+template <class T> void swap(T& a, T& b) {
+    T t = move(a);
+    a = move(b);
+    b = move(t);
+}
+
+template <class T, T... Ns> struct integer_sequence {
+    typedef T value_type;
+    static constexpr size_t size() noexcept { return sizeof...(Ns); }
+};
+
+template <size_t... Ns> using index_sequence = integer_sequence<size_t, Ns...>;
+
+template <class A, class B>
+struct pair {
+    A first;
+    B second;
+    constexpr pair() : first(), second() {}
+    constexpr pair(const A& a, const B& b) : first(a), second(b) {}
+    template <class A2, class B2>
+    constexpr pair(A2&& a, B2&& b) : first(forward<A2>(a)), second(forward<B2>(b)) {}
+    void swap(pair& p) {
+        swap(first, p.first);
+        swap(second, p.second);
+    }
+};
+
+template <class A, class B>
+constexpr pair<typename decay<A>::type, typename decay<B>::type>
+make_pair(A&& a, B&& b) {
+    return pair<typename decay<A>::type, typename decay<B>::type>(
+        forward<A>(a), forward<B>(b));
+}
+
+template <class T> struct add_rvalue_reference { typedef T&& type; };
+template <class T> struct add_rvalue_reference<T&> { typedef T&& type; };
+template <> struct add_rvalue_reference<void> { typedef void type; };
+
+template <class T>
+typename add_rvalue_reference<T>::type declval();
+
+template <class A, class B>
+constexpr bool operator==(const pair<A, B>& a, const pair<A, B>& b) {
+    return a.first == b.first && a.second == b.second;
+}
+
+template <class A, class B>
+constexpr bool operator<(const pair<A, B>& a, const pair<A, B>& b) {
+    return a.first < b.first || (!(b.first < a.first) && a.second < b.second);
+}
+
+} // namespace std
+
+#endif

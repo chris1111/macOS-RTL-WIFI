@@ -1,0 +1,26 @@
+// kstl <cstring> — own kernel-safe subset, part of this project (GPL-2.0).
+// Forwards the C library of the kernel SDK and exposes the std:: names.
+#ifndef KSTL_CSTRING
+#define KSTL_CSTRING
+
+#include <string.h>
+
+namespace std {
+using ::memcpy;
+using ::memmove;
+using ::memset;
+using ::memcmp;
+using ::strlen;
+using ::strnlen;
+using ::strcpy;
+using ::strncpy;
+using ::strcmp;
+using ::strncmp;
+using ::strcat;
+using ::strncat;
+using ::strchr;
+using ::strrchr;
+using ::strstr;
+}
+
+#endif

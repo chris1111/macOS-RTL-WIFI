@@ -1,0 +1,13 @@
+// kstl <cstddef> — own kernel-safe subset, part of this project (GPL-2.0).
+#ifndef KSTL_CSTDDEFINED
+#define KSTL_CSTDDEFINED
+
+#include <stddef.h>
+
+namespace std {
+using ::size_t;
+using ::ptrdiff_t;
+typedef decltype(nullptr) nullptr_t;
+}
+
+#endif

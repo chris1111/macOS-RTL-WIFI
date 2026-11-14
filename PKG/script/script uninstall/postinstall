@@ -1,0 +1,24 @@
+#!/bin/bash
+# script for Mount EFI 
+# chris1111 
+
+
+#select
+
+DEST_VOL="${3}"
+if [[ $(mount | awk '$3 == "/Volumes/EFI" {print $3}') != "" ]]; then
+ hdiutil Unmount "/Volumes/EFI"
+fi
+
+if [[ $(mount | awk '$3 == "/Volumes/ESP" {print $3}') != "" ]]; then
+ hdiutil Unmount "/Volumes/ESP"
+fi
+sleep 3
+./MountESP /"$3"/
+sleep 2
+rm -rf /Volumes/ESP/EFI/OC/kexts/macOS-RTL-WIFI.kext
+rm -rf /Volumes/ESP/EFI/CLOVER/kexts/Other/macOS-RTL-WIFI.kext
+# Remove link to the partition that contain the EFI folder
+rm -rf "${DEST_VOL}"/EFIROOTDIR
+rm -rf "/Library/Application Support/WLAN"
+echo "Uninstall Complete."

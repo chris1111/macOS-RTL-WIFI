@@ -1,0 +1,197 @@
+// kstl <algorithm> — own kernel-safe subset, part of this project (GPL-2.0).
+// Header-only, exception-free, no allocator/iterator machinery: raw pointers
+// and the small query functions below are everything the sources use.
+#ifndef KSTL_ALGORITHM
+#define KSTL_ALGORITHM
+
+#include "cstddef"
+#include "cstdint"
+#include "utility"
+
+namespace std {
+
+template <class I, class P>
+bool all_of(I first, I last, P pred) {
+    for (; first != last; ++first)
+        if (!pred(*first)) return false;
+    return true;
+}
+
+template <class I, class P>
+bool any_of(I first, I last, P pred) {
+    for (; first != last; ++first)
+        if (pred(*first)) return true;
+    return false;
+}
+
+template <class I, class P>
+bool none_of(I first, I last, P pred) {
+    for (; first != last; ++first)
+        if (pred(*first)) return false;
+    return true;
+}
+
+template <class I, class F>
+F for_each(I first, I last, F fn) {
+    for (; first != last; ++first) fn(*first);
+    return move(fn);
+}
+
+template <class I, class T>
+I find(I first, I last, const T& value) {
+    for (; first != last; ++first)
+        if (*first == value) return first;
+    return last;
+}
+
+template <class I, class P>
+I find_if(I first, I last, P pred) {
+    for (; first != last; ++first)
+        if (pred(*first)) return first;
+    return last;
+}
+
+template <class I, class P>
+I find_if_not(I first, I last, P pred) {
+    for (; first != last; ++first)
+        if (!pred(*first)) return first;
+    return last;
+}
+
+template <class I, class T>
+ptrdiff_t count(I first, I last, const T& value) {
+    ptrdiff_t n = 0;
+    for (; first != last; ++first)
+        if (*first == value) ++n;
+    return n;
+}
+
+template <class I, class P>
+ptrdiff_t count_if(I first, I last, P pred) {
+    ptrdiff_t n = 0;
+    for (; first != last; ++first)
+        if (pred(*first)) ++n;
+    return n;
+}
+
+template <class I, class O>
+O copy(I first, I last, O dest) {
+    for (; first != last; ++first, ++dest) *dest = *first;
+    return dest;
+}
+
+template <class I, class O, class P>
+O copy_if(I first, I last, O dest, P pred) {
+    for (; first != last; ++first)
+        if (pred(*first)) { *dest = *first; ++dest; }
+    return dest;
+}
+
+template <class I, class Sz, class O>
+O copy_n(I first, Sz n, O dest) {
+    for (; n > 0; --n, ++first, ++dest) *dest = *first;
+    return dest;
+}
+
+template <class I, class O>
+O copy_backward(I first, I last, O destLast) {
+    while (first != last) *--destLast = *--last;
+    return destLast;
+}
+
+template <class I, class O, class F>
+O transform(I first, I last, O dest, F op) {
+    for (; first != last; ++first, ++dest) *dest = op(*first);
+    return dest;
+}
+
+template <class I1, class I2, class O, class F>
+O transform(I1 first1, I1 last1, I2 first2, O dest, F op) {
+    for (; first1 != last1; ++first1, ++first2, ++dest) *dest = op(*first1, *first2);
+    return dest;
+}
+
+template <class I, class T>
+void fill(I first, I last, const T& value) {
+    for (; first != last; ++first) *first = value;
+}
+
+template <class I, class Sz, class T>
+I fill_n(I first, Sz n, const T& value) {
+    for (; n > 0; --n, ++first) *first = value;
+    return first;
+}
+
+template <class I1, class I2>
+bool equal(I1 first1, I1 last1, I2 first2) {
+    for (; first1 != last1; ++first1, ++first2)
+        if (!(*first1 == *first2)) return false;
+    return true;
+}
+
+template <class I1, class I2, class P>
+bool equal(I1 first1, I1 last1, I2 first2, P pred) {
+    for (; first1 != last1; ++first1, ++first2)
+        if (!pred(*first1, *first2)) return false;
+    return true;
+}
+
+template <class I1, class I2>
+bool lexicographical_compare(I1 f1, I1 l1, I2 f2, I2 l2) {
+    for (; f1 != l1 && f2 != l2; ++f1, ++f2) {
+        if (*f1 < *f2) return true;
+        if (*f2 < *f1) return false;
+    }
+    return f1 == l1 && f2 != l2;
+}
+
+// std::min and std::max are intentionally NOT provided. The kernel SDK's
+// <IOKit/IOLib.h> defines function-like macros named min and max
+// (`#define min(a, b) ((a) < (b) ? (a) : (b))`), and any std::min/std::max
+// declaration or call site would be rewritten by the preprocessor before the
+// compiler ever sees it (observed as `algorithm:149: expected unqualified-id`
+// on a real Mac build). Nothing in this project calls them; use the SDK
+// macros or plain comparisons instead. min_element/max_element survive —
+// their names are not macros.
+
+template <class I>
+I min_element(I first, I last) {
+    if (first == last) return last;
+    I best = first;
+    for (++first; first != last; ++first)
+        if (*first < *best) best = first;
+    return best;
+}
+
+template <class I>
+I max_element(I first, I last) {
+    if (first == last) return last;
+    I best = first;
+    for (++first; first != last; ++first)
+        if (*best < *first) best = first;
+    return best;
+}
+
+template <class I, class T>
+void replace(I first, I last, const T& oldv, const T& newv) {
+    for (; first != last; ++first)
+        if (*first == oldv) *first = newv;
+}
+
+template <class I, class P, class T>
+void replace_if(I first, I last, P pred, const T& newv) {
+    for (; first != last; ++first)
+        if (pred(*first)) *first = newv;
+}
+
+template <class I>
+void reverse(I first, I last) {
+    while (first != last && first != --last) {
+        swap(*first, *last);
+        ++first;
+    }
+}
+
+} // namespace std
+
+#endif

@@ -1,0 +1,20 @@
+// kstl <cstdlib> — own kernel-safe subset, part of this project (GPL-2.0).
+#ifndef KSTL_CSTDLIB
+#define KSTL_CSTDLIB
+
+#include <stdlib.h>
+
+namespace std {
+using ::abs;
+using ::labs;
+using ::div;
+using ::ldiv;
+using ::malloc;
+using ::free;
+using ::calloc;
+using ::realloc;
+using ::bsearch;
+using ::qsort;
+}
+
+#endif
