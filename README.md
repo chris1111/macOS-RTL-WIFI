@@ -66,7 +66,9 @@ cleanly rather than wedge the machine, but they need field logs for
 validation. Full per-ID lookup (decimal columns for ioreg output):
 `USB-ID-fleet-map.md`.
 
-## Supported adapters
+## Supported adapters: 
+
+### We have 14 adapter that have been tested and are functional. If you have a dongle from this list that works, please open a discussion and let us know. Thank you.
 
 Legend:
 
