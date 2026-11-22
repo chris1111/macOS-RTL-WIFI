@@ -180,12 +180,19 @@ pkgutil --flatten /Private/tmp/Package-DIR ./Build/Release/"Wireless USB macOS-R
 sleep 1
 # Copy the PayPal donation page next to the package
 mkdir -p ./Build/Release
-if [ -f "./Support Donate.html" ]; then
-  cp -f "./Support Donate.html" ./Build/Release/
+if [ -d "./Build/App/RTLWiFiBar.app" ]; then
+  rm -rf ./Build/Release/RTLWiFiBar.app
   cp -Rp "./Build/App/RTLWiFiBar.app" ./Build/Release/
   echo "RTLWiFiBar copied to ./Build/Release"
+fi
+if [ -f "./Support Donate.html" ]; then
+  cp -f "./Support Donate.html" ./Build/Release/
   echo "Support Donate.html copied to ./Build/Release"
 fi
+# License notices that must accompany the distribution
+for f in THIRD-PARTY-NOTICES.md LICENSE-GPL-2.0.txt; do
+  [ -f "./$f" ] && cp -f "./$f" ./Build/Release/
+done
 # Set the PayPal custom icon on the donation page (osxutils seticon)
 if [ -f "./Build/Release/Support Donate.html" ] && [ -x "./PKG/script/SETICON/seticon" ] && [ -f "./PKG/script/SETICON/Paypal.icns" ]; then
   ./PKG/script/SETICON/seticon -d ./PKG/script/SETICON/Paypal.icns ./Build/Release/"Support Donate.html"

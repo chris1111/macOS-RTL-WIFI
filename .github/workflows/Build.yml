@@ -1,12 +1,13 @@
 # Builds the x86_64 kext and the full OC/Clover installer on every push
-# (and on demand) on a macOS runner, then publishes the "1.0.3" GitHub
-# release with ONE asset:
+# (and on demand) on a macOS runner, then publishes the GitHub
+# release (tag = kext version, read from the built kext) with ONE asset:
 #
 #   Release.zip  containing
 #     - macOS-RTL-WIFI.kext
 #     - RTLWiFiBar.app   (the menu bar app, also installed by the pkg)
 #     - Wireless USB macOS-RTL-WIFI.pkg
 #     - Support Donate.html
+#     - THIRD-PARTY-NOTICES.md and LICENSE-GPL-2.0.txt (license notices)
 #
 # If the release already exists, its assets are replaced on every
 # successful run.
@@ -118,6 +119,10 @@ jobs:
           ditto "Build/Release/RTLWiFiBar.app"                 "${STAGE}/RTLWiFiBar.app"
           ditto "Build/Release/Wireless USB macOS-RTL-WIFI.pkg" "${STAGE}/Wireless USB macOS-RTL-WIFI.pkg"
           ditto "Build/Release/Support Donate.html"             "${STAGE}/Support Donate.html"
+          # License notices that must accompany the distribution (Realtek
+          # firmware licenses, OpenBSD/BSD/ISC notices, GPL-2.0)
+          ditto "THIRD-PARTY-NOTICES.md"                        "${STAGE}/THIRD-PARTY-NOTICES.md"
+          ditto "LICENSE-GPL-2.0.txt"                           "${STAGE}/LICENSE-GPL-2.0.txt"
 
           # Archive the staging directory as one source, with its contents at
           # the zip root.
@@ -138,6 +143,8 @@ jobs:
             echo "::warning::RTLWiFiBar.app has no valid (ad-hoc) signature after the zip roundtrip"
           test -s "${CHECK}/Wireless USB macOS-RTL-WIFI.pkg"
           test -s "${CHECK}/Support Donate.html"
+          test -s "${CHECK}/THIRD-PARTY-NOTICES.md"
+          test -s "${CHECK}/LICENSE-GPL-2.0.txt"
           grep -q "leblond1111@gmail.com" "${CHECK}/Support Donate.html"
           echo "Release.zip verified:"
           unzip -l "${RELEASE}/Release.zip" | sed -n '1,20p'
@@ -156,12 +163,12 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: macOS-RTL-WIFI-1.0.1-release-assets
+          name: macOS-RTL-WIFI-release-assets
           path: ${{ runner.temp }}/release/Release.zip
           if-no-files-found: warn
           retention-days: 14
 
-      - name: Publish the 1.0.1 release
+      - name: Publish the release
         # Only the default branch may publish; other branches still build and
         # upload the workflow artifact above.
         if: ${{ github.ref_name == github.event.repository.default_branch }}
@@ -170,7 +177,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          TAG="1.0.1"
           cd "${RUNNER_TEMP}/release"
           ASSETS=("Release.zip")
           for asset in "${ASSETS[@]}"; do
@@ -182,13 +188,21 @@ jobs:
           KEXT_VER="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' \
             "${GITHUB_WORKSPACE}/Build/Release/macOS-RTL-WIFI.kext/Contents/Info.plist" \
             2>/dev/null || printf '1.0.1')"
+          APP_VER="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' \
+            "${GITHUB_WORKSPACE}/Build/Release/RTLWiFiBar.app/Contents/Info.plist" \
+            2>/dev/null || printf '?')"
+          # The release tag and title follow the kext version, so nothing has
+          # to be edited here for a new version. An app-only change keeps the
+          # same tag and simply replaces the assets.
+          TAG="${KEXT_VER}"
+          TITLE="macOS-RTL-WIFI ${KEXT_VER} (app ${APP_VER})"
           cat > "${RUNNER_TEMP}/release-notes.md" <<EOF
           Automated release build of **macOS-RTL-WIFI** produced by GitHub
           Actions from this source tree.
 
           - **Kext:** macOS-RTL-WIFI ${KEXT_VER} - x86_64 (Intel), ad-hoc signed,
             bundle id com.rtlwifi.macos.driver
-          - **Menu bar app:** RTLWiFiBar.app - choose the network and enter the
+          - **Menu bar app:** RTLWiFiBar ${APP_VER} - choose the network and enter the
             router password; the UI follows the macOS language (16 languages)
           - **Full installer:** Wireless USB macOS-RTL-WIFI.pkg - delivers the
             kext to the EFI partition for OpenCore and Clover, with RTLWiFiBar
@@ -203,9 +217,10 @@ jobs:
               (OpenCore + Clover delivery to the EFI partition, RTLWiFiBar
               and launch agent)
             - Support Donate.html - PayPal donation page
+            - THIRD-PARTY-NOTICES.md, LICENSE-GPL-2.0.txt - license notices
 
           ### Compatibility and scope
-          - Intel Macs, macOS 11 Big Sur through macOS 26 Tahoe
+          - Intel Macs; developed and tested on macOS Ventura and macOS Tahoe
           - Station mode, WPA2-Personal
           - Realtek USB adapters (RTL8188EU, RTL8192CU/EU, RTL8723BU, RTL8821AU,
             RTL8821CU, RTL8822BU ...) - see DONGLES.md for the adapters tested
@@ -226,11 +241,13 @@ jobs:
           sed -i '' -e 's/^          //' "${RUNNER_TEMP}/release-notes.md"
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$TAG" "${ASSETS[@]}" --clobber --repo "$GITHUB_REPOSITORY"
+            gh release edit "$TAG" --title "$TITLE" \
+              --notes-file "${RUNNER_TEMP}/release-notes.md" --repo "$GITHUB_REPOSITORY"
             echo "::notice::Release ${TAG} already existed; its assets were replaced."
           else
             gh release create "$TAG" "${ASSETS[@]}" \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
-              --title "macOS-RTL-WIFI 1.0.1" \
+              --title "$TITLE" \
               --notes-file "${RUNNER_TEMP}/release-notes.md"
           fi

@@ -1,4 +1,16 @@
-# Release 1.2.2 (kext 1.1.1, app 8.8.2)
+# Release 1.2.3 (kext 1.1.1, app 8.8.2 - no code change)
+
+## Documentation and licensing
+- README rewritten: Quick start, per-family test status, 13 tested adapters,
+  known limitations, how to report a problem.
+- New `SUPPORTED-ADAPTERS` list merged into the README (tested adapters marked).
+- New `THIRD-PARTY-NOTICES.md`: both Realtek firmware licenses, OpenBSD/BSD/ISC
+  and itlwm notices. Shipped in Release.zip (workflow) and `Build/Release`
+  (`Create_Build.tool`).
+- `Driver/RTL8192EUFirmware.inc`: full urtwn notice in the header (was a one-line pointer).
+- `Create_Build.tool`: RTLWiFiBar.app is now copied to `Build/Release` even without `Support Donate.html`.
+
+# Release 1.2.2 (previous) (kext 1.1.1, app 8.8.2)
 - App: the About panel showed "Version 8.7 (18)" (hardcoded). It is now derived
   from the app version: 8.8.2 shows as "Version 8.8 (2)".
 

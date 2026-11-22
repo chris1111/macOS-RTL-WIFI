@@ -1,17 +1,28 @@
-# macOS-RTL-WIFI 
-Realtek RTL8188EU USB Wi-Fi driver for Intel macOS
+# macOS-RTL-WIFI
+Realtek USB Wi-Fi driver (RTL81xx / RTL88xx families) for Intel macOS
 ### Download Release ➦ [macOS-RTL-WIFI](https://github.com/chris1111/macOS-RTL-WIFI/releases)
 
-Independent macOS kernel-extension project for Realtek **RTL8188EU** USB Wi-Fi
-adapters on Intel Macs, macOS 11 Big Sur through macOS 26. Station mode,
-2.4 GHz (802.11b/g), WPA2-Personal.
+Independent macOS kernel-extension project for Realtek USB Wi-Fi adapters on
+Intel Macs (Hackintosh with OpenCore or Clover). Station mode, WPA2-Personal,
+2.4 GHz and, on dual-band adapters, 5 GHz. Developed and tested on macOS
+Ventura and macOS Tahoe.
 
 > **This driver is in development.** Expect changes between releases; test
 > before relying on it for daily use, and report issues on the project page.
+> This is an independent project, not affiliated with or endorsed by Realtek.
+> It is provided as is, without warranty.
+
+## Quick start
+
+1. Download `Release.zip` from the [releases page](https://github.com/chris1111/macOS-RTL-WIFI/releases) and run the installer package. Choose the OpenCore or Clover driver entry for your setup.
+2. Restart. The package installs the kext into your EFI folder, plus the menu bar app **RTLWiFiBar** and its launch agent.
+3. Plug in the adapter, click the RTLWiFiBar icon in the menu bar, choose your network and enter the router password. The network is remembered and rejoins automatically after a reboot (typically in 1-3 seconds).
+
+**Good to know:** the driver is not an Apple Wi-Fi provider. The adapter appears as an Ethernet-style interface ("802.11n NIC") in System Settings > Network, not in the macOS Wi-Fi menu. Use the RTLWiFiBar menu to pick the network. macOS identifies network interfaces by MAC address, so a replacement dongle shows up as a new service ("802.11n NIC 2").
 
 - **Kext + installer package.** `Create_Build.tool` builds the kext and, from
   the `PKG/` folder in this tree, the full `Wireless USB macOS-RTL-WIFI.pkg`
-  installer: RTLWiFiBar.app , launch agent, automatic EFI drop-in for OpenCore or Clover (including
+  installer: RTLWiFiBar.app, launch agent, automatic EFI drop-in for OpenCore or Clover (including
   the OpenCore `config.plist` entry) and an uninstaller.
 - **Builds from the command line** with `./Create_Build.tool` (plain
   `xcodebuild` also works for the kext alone).
@@ -22,19 +33,19 @@ adapters on Intel Macs, macOS 11 Big Sur through macOS 26. Station mode,
 
 ## Screenshot Package installer OC and Clover
 
-<img src="PICS/Screenshot-PKG.png" alt="Github Project" style="width:60%;">
+<img src="PICS/Screenshot-PKG.png" alt="Screenshot" style="width:60%;">
 
-<img src="PICS/Screenshot-PKGClover.png" alt="Github Project" style="width:60%;">
+<img src="PICS/Screenshot-PKGClover.png" alt="Screenshot" style="width:60%;">
 
 ## Screenshot Package Uninstall Utility
 
-<img src="PICS/Screenshot-Uninstall.png" alt="Github Project" style="width:60%;">
+<img src="PICS/Screenshot-Uninstall.png" alt="Screenshot" style="width:60%;">
 
 ## Screenshot StatusBarApp
 
-<img src="PICS/Screenshot-App.png" alt="Github Project" style="width:40%;">
+<img src="PICS/Screenshot-App.png" alt="Screenshot" style="width:40%;">
 
-<img src="PICS/Screenshot-App2.png" alt="Github Project" style="width:40%;">
+<img src="PICS/Screenshot-App2.png" alt="Screenshot" style="width:40%;">
 
 
 ## Supported adapters — full verified Realtek USB fleet, 263 personalities
@@ -44,31 +55,29 @@ The kext ships the complete verified identity catalog
 verified catalog provenance ship — 8 unverified rows and the station-gated
 RTL8814BU stay out (fail-closed).
 
-| Family | USB IDs | Backend status |
+| Family | USB IDs | Status |
 |---|---|---|
-| RTL8188EU / RTL8192EU (r92e) | 28 | field-proven on this iMac |
-| RTL8192CU era (8188CU/CUS/CTV/RU/92C) | 88 | implemented, firmware embedded |
-| RTL8812AU | 36 | implemented, firmware embedded |
-| RTL8821AU | 35 | implemented, firmware embedded |
-| RTL8822BU / RTL8822CU | 32 | implemented, firmware embedded |
-| RTL8821CU | 12 | implemented, firmware embedded |
-| RTL8814AU | 17 | implemented, firmware embedded |
-| RTL8192DU | 5 | implemented, firmware embedded |
-| RTL8192FU | 4 | implemented, firmware embedded |
-| RTL8723BU | 3 | implemented, firmware embedded |
-| RTL8710BU | 2 | implemented, firmware embedded |
+| RTL8188EU / RTL8192EU | 28 | ✅ 8192EU tested (TL-WN823N, TL-WN822N, TL-WN821N); ⚠️ 8188EU connects but **no DHCP**, manual IP works |
+| RTL8192CU era (8188CU/CUS/CTV/RU/92C) | 88 | implemented, not tested |
+| RTL8812AU | 36 | implemented, not tested |
+| RTL8821AU | 35 | ✅ tested (Archer T2U Plus, 20 MHz) |
+| RTL8822BU / RTL8822CU | 32 | ✅ 8822BU tested (Archer T4U, Cudy WU1400, TRENDnet mini) |
+| RTL8821CU | 12 | ✅ tested (MLINK 96581, generic 0bda:c811) |
+| RTL8814AU | 17 | implemented, not tested |
+| RTL8192DU | 5 | implemented, not tested |
+| RTL8192FU | 4 | implemented, not tested |
+| RTL8723BU | 3 | ✅ tested (EDIMAX EW-7611UCB) |
+| RTL8710BU | 2 | implemented, not tested |
 
 The driver identifies the chip at attach time and dispatches through the
 family backend table (`Core/FamilyBackend.c`); every family's firmware image
-is embedded in the Driver layer. EU/92EU is hardware-validated; the other
-families run the same verify-before-touch attach and are expected to fail
-cleanly rather than wedge the machine, but they need field logs for
-validation. Full per-ID lookup (decimal columns for ioreg output):
-`USB-ID-fleet-map.md`.
+is embedded in the Driver layer. Families marked "not tested" run the same
+verify-before-touch attach and are expected to fail cleanly rather than wedge
+the machine, but they need field logs for validation.
 
-## Supported adapters: 
+## Adapter compatibility list
 
-### We have 14 adapter that have been tested and are functional. If you have a dongle from this list that works, please open a ➤ [discussion](https://github.com/chris1111/macOS-RTL-WIFI/discussions) and let us know. Thank you.
+**13 adapters have been tested** (✅ working, ⚠️ working with limits). If you have a dongle from this list that works, please open a ➤ [discussion](https://github.com/chris1111/macOS-RTL-WIFI/discussions) and let us know. Thank you.
 
 Legend:
 
@@ -151,7 +160,19 @@ Legend:
 - Zyxel NWD6602
 - Zyxel NWD6605
 
-**Known limitation:** RTL8188EU-based adapters (some TL-WN725N / TL-WN722N, generic 0bda:0179 dongles) do not receive DHCP replies yet. They work with a manual IP address. See [KNOWN-ISSUES.md](KNOWN-ISSUES.md).
+Per-dongle test details: [DONGLES.md](DONGLES.md).
+
+## Known limitations
+
+- **RTL8188EU adapters (TL-WN725N, TL-WN722N, generic 0bda:0179):** they associate with the router but get no DHCP reply. Set a manual IP address.
+- No automatic rejoin after a Wi-Fi drop in the middle of a session (a reboot rejoins normally).
+- A replacement dongle appears as a new network service ("NIC 2").
+
+Details and next steps: [KNOWN-ISSUES.md](KNOWN-ISSUES.md).
+
+## Reporting a problem
+
+Open an issue or discussion with: the adapter model and USB ID (`ioreg -p IOUSB -l | grep -i -A3 "idVendor"`), your macOS version, the Mac or Hackintosh model, and the RTLWiFiBar log. Please say whether you rebooted after connecting.
 
 
 ## Requirements
@@ -214,13 +235,14 @@ The full upstream list — Linux `rtw88` / `rtl8xxxu`, OpenBSD `rtwn` and
 ## License
 
 GPL-2.0 — see [LICENSE-GPL-2.0.txt](LICENSE-GPL-2.0.txt). Third-party notices
-and licenses are retained in the respective files and under `Firmware/`.
+and licenses are retained in the respective files and collected in
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). The Realtek firmware images
+embedded in the driver are separate, unmodified binary data under Realtek's own
+redistribution licenses (not GPL-2.0); they are included in the same file.
 
 ## Status
 
-This tree carries the driver code generation field-tested as 1.0.25 (now
-re-versioned 1.0.0 under the new identity): the TODS frame-direction fix in
-`Driver/RTWUSBController.cpp` (the `IEEE80211_FC1_DIR_TODS` frame-direction
-check) and the DHCP/link heal backoff sequence (240000 / 480000 / 900000 ms).
-The rebuild changes packaging, identity, build command and SDK source only —
-re-verify on hardware after the first EFI swap.
+Current versions: kext **1.1.1**, RTLWiFiBar **8.8.2**. See
+[RELEASE-NOTES-1.2.3.md](RELEASE-NOTES-1.2.3.md) and `docs/patch-history/` for
+what changed between releases. Re-verify on your own hardware after the first
+EFI swap.
