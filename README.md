@@ -98,7 +98,7 @@ Legend:
 - Alfa AWUS036ACH
 - Archer T2U Plus (AC600) ✅
 - Archer T2U Nano
-- Archer T3U Nano
+- Archer T3U Nano ✅
 - Archer T3U
 - Archer T3U Plus
 - Archer T2U MINI V3
@@ -127,7 +127,7 @@ Legend:
 - EDIMAX EW-7833UAC
 - EDIMAX EW-7612UAn V2
 - EDIMAX N300
-- EDIMAX EW-7811Un (N150)
+- EDIMAX EW-7811Un (N150) ✅
 - EDUP EP-AC1689
 - Fenvi AC1300 (RTL8812BU)
 - FILOWA USB WiFi (RTL8812BU)
