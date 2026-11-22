@@ -227,6 +227,11 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
  * link. All written on the poll queue. */
 @property (assign) uint32_t joinLastSeenState;
 @property (assign) uint32_t joinDeauthReasonSeen;
+/* 2026-11-22: the watched join came from a menu click that used the saved
+ * password (no prompt). If it ends in the WPA handshake, the saved password
+ * is probably out of date (phone hotspot, changed router key): offer the
+ * prompt then. Cleared with the join watch. */
+@property (assign) BOOL joinWatchSavedPass;
 @property (copy, nullable) NSString *lastJoinFailureNote;
 @property (assign) NSInteger consecutivePollFailures;
 @property (strong, nullable) NSSecureTextField *pendingPassField;
@@ -313,6 +318,7 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
 - (void)noteJoinSubmittedForEntry:(RTWNetworkEntry *)entry passphrase:(nullable NSString *)pass;
 - (BOOL)monitorJoinFlight:(nullable RTWDriverStatus *)status;
 - (void)clearJoinFlightWatch;
+- (void)offerNewPasswordForEntry:(RTWNetworkEntry *)entry; /* 2026-11-22 */
 /* v8.7.17: startup auto-rejoin plumbing. */
 - (void)maybeFireStartupAutoRejoinWithRecords:(NSArray<RTWNetworkEntry *> *)records;
 - (void)submitAutoRejoin:(RTWNetworkEntry *)entry passphrase:(nullable NSString *)pass;
@@ -894,6 +900,7 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
     self.joinInFlightSsid = nil;
     self.joinWatchEntry = nil;
     self.joinWatchKey = nil;
+    self.joinWatchSavedPass = NO;
     self.joinInFlightUntil = 0;
     self.joinStartedAt = 0;
 }
@@ -971,8 +978,18 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
         RTWLog(@"driver diagnostics at join failure: %@", [self.driver diagnosticSummary]);
         self.lastJoinFailureNote = [NSString stringWithFormat:
             @"Join to \"%@\" failed - %@", self.joinInFlightSsid, why];
+        /* 2026-11-22: a saved-password join that died in the WPA handshake
+         * (driver state 3 or 4) most likely has an outdated password. */
+        BOOL offerRetype = self.joinWatchSavedPass &&
+            (self.joinLastSeenState == 3 || self.joinLastSeenState == 4);
+        RTWNetworkEntry *retypeEntry = self.joinWatchEntry;
         [self clearPendingNetworkSave];
         [self clearJoinFlightWatch];
+        if (offerRetype && retypeEntry) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [self offerNewPasswordForEntry:retypeEntry];
+            });
+        }
         return YES;
     }
 
@@ -1835,15 +1852,28 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
     }
 
     NSString *pass = nil;
+    BOOL usedSavedPassword = NO;
     if (entry.needsPassphrase) {
-        /* v8.7.7 (the user's rule): selecting a secured network ALWAYS
-         * opens the password prompt - the connection is established here,
-         * with the password typed in the open, never from a silently
-         * reused profile. */
-        pass = [self promptPassphrase:entry.ssid];
-        if (!pass) { /* cancelled */
-            RTWLog(@"password prompt cancelled for %@", entry.ssid);
-            return;
+        /* v8.7.7 rule (always prompt) replaced on 2026-11-22 (the user's
+         * decision: a user switching between home Wi-Fi and a phone hotspot
+         * had to retype both passwords every time): a network that already
+         * has a saved password joins with it - no prompt. The prompt stays
+         * for networks never saved here, and after Forget (which removes
+         * the profile) it asks again, which is also the way to correct a
+         * password that changed. */
+        NSString *saved = [self.profiles hasProfileForSsid:entry.ssid]
+            ? [self.profiles passphraseForSsid:entry.ssid] : nil;
+        if (saved.length) {
+            pass = saved;
+            usedSavedPassword = YES;
+            RTWLog(@"joining \"%@\" with its saved password (no prompt; Forget it to type a new one)",
+                   entry.ssid);
+        } else {
+            pass = [self promptPassphrase:entry.ssid];
+            if (!pass) { /* cancelled */
+                RTWLog(@"password prompt cancelled for %@", entry.ssid);
+                return;
+            }
         }
         /* v8.7.10 (the user's demand: "SAVE IS GONE we have in earlier
          * build"): the profile is written the moment the password is
@@ -1866,6 +1896,37 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
     /* Selecting a network makes it the active one: pinned on top of the
      * collapsed menu for this session. Nothing joins automatically -
      * the submit below is the user's own click (v8.7.13). */
+    [self armPendingNetworkSaveForEntry:entry passphrase:pass];
+    [self markActiveSsid:entry.ssid];
+    [self submitJoin:entry passphrase:pass];
+    /* After submitJoin: it arms the join watch (and a rejected submit clears
+     * it), so the flag only lives with a watch that is really running. */
+    if (usedSavedPassword && self.joinInFlightSsid.length) self.joinWatchSavedPass = YES;
+}
+
+/* 2026-11-22: the saved password did not get through the WPA handshake -
+ * say so and let the user type the new one. Cancel leaves everything as is
+ * (the menu already shows the failure note). The typed password is saved
+ * like any other manual join, replacing the old one. */
+- (void)offerNewPasswordForEntry:(RTWNetworkEntry *)entry {
+    if (!entry.ssid.length || self.userDisconnected || self.joinInFlightSsid.length) return;
+    [self.stateLock lock];
+    RTWDriverStatus *status = self.lastStatus;
+    [self.stateLock unlock];
+    if (status && status.linked) return;
+    RTWLog(@"saved password for \"%@\" was not accepted - asking for the current one", entry.ssid);
+    [self alert:[NSString stringWithFormat:NSLocalizedString(@"Could not join \"%@\"", nil), entry.ssid]
+           text:NSLocalizedString(@"The saved password was not accepted. If the password changed (a phone hotspot or a new router key), type the new one in the next window.", nil)];
+    NSString *pass = [self promptPassphrase:entry.ssid];
+    if (!pass) {
+        RTWLog(@"new password prompt cancelled for %@", entry.ssid);
+        return;
+    }
+    [self.profiles rememberNetwork:entry.ssid
+                         passphrase:pass
+                           authMode:entry.authMode
+                            channel:entry.channel];
+    [self markKnownSsid:entry.ssid];
     [self armPendingNetworkSaveForEntry:entry passphrase:pass];
     [self markActiveSsid:entry.ssid];
     [self submitJoin:entry passphrase:pass];
