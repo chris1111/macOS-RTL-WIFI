@@ -887,7 +887,24 @@ ieee80211_begin_scan(struct _ifnet *ifp)
     ieee80211_setmode(ic, (enum ieee80211_phymode)ic->ic_curmode);
     
     ic->ic_scan_count = 0;
-    
+
+    /* 1.0.31: a join to a network the survey already saw scanned all ~36
+     * channels (8.3 s measured on an RTL8822BU, network on ch 157). The
+     * driver leaves the network's channel in ic_join_chan_hint; scan only
+     * that channel on this first pass. The hint is consumed here, so if the
+     * AP is not found there the next pass is the normal full sweep. */
+    if (ic->ic_opmode == IEEE80211_M_STA && ic->ic_bss != NULL &&
+        ic->ic_join_chan_hint != 0) {
+        u_int hint = ic->ic_join_chan_hint;
+        ic->ic_join_chan_hint = 0;
+        if (hint >= 1 && hint < IEEE80211_CHAN_MAX &&
+            isset(ic->ic_chan_active, hint)) {
+            memset(ic->ic_chan_scan, 0, sizeof(ic->ic_chan_scan));
+            setbit(ic->ic_chan_scan, hint);
+            ic->ic_bss->ni_chan = &ic->ic_channels[hint - 1];
+        }
+    }
+
     /* Scan the next channel. */
     ieee80211_next_scan(ifp);
 }
@@ -1315,7 +1332,7 @@ ieee80211_node_choose_bss(struct ieee80211com *ic, int bgscan,
 {
     XYLog("%s\n", __FUNCTION__);
     struct ieee80211_node *ni, *nextbs, *selbs = NULL,
-    *selbs2 = NULL, *selbs5 = NULL;
+    *selbs2 = NULL, *selbs5 = NULL, *selbad = NULL;
     uint8_t min_5ghz_rssi;
     
     ni = RB_MIN(ieee80211_tree, &ic->ic_tree);
@@ -1342,6 +1359,12 @@ ieee80211_node_choose_bss(struct ieee80211com *ic, int bgscan,
             continue;
         }
         
+        /* 1.0.38: a BSS that just timed out in AUTH/ASSOC is only used
+         * when no other BSS qualifies. */
+        if (ic->ic_bad_valid && !memcmp(ni->ni_bssid, ic->ic_bad_bssid, 6)) {
+            if (selbad == NULL || ni->ni_rssi > selbad->ni_rssi) selbad = ni;
+            continue;
+        }
         if (ic->ic_caps & IEEE80211_C_SCANALLBAND) {
             if (IEEE80211_IS_CHAN_2GHZ(ni->ni_chan) &&
                 (selbs2 == NULL || ni->ni_rssi > selbs2->ni_rssi))
@@ -1371,6 +1394,11 @@ ieee80211_node_choose_bss(struct ieee80211com *ic, int bgscan,
         selbs = selbs2;
     else if (selbs5)
         selbs = selbs5;
+    /* 1.0.41: after a 5 GHz timeout stay on 2.4 GHz until we reach RUN. */
+    if (ic->ic_avoid5 && selbs2)
+        selbs = selbs2;
+    if (selbs == NULL)
+        selbs = selbad;
     
     return selbs;
 }

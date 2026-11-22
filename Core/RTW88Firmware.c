@@ -40,7 +40,12 @@ static int rd(rtw88_fw_context*c,uint16_t a,unsigned w,uint32_t*v){*v=0;return e
 static int wr(rtw88_fw_context*c,uint16_t a,unsigned w,uint32_t v){return error(c,c->bus.write(c->bus.cookie,a,w,v));}
 static int update(rtw88_fw_context*c,uint16_t a,unsigned w,uint32_t mask,uint32_t v){uint32_t old;int e=rd(c,a,w,&old);return e?e:wr(c,a,w,(old&~mask)|(v&mask));}
 static int poll(rtw88_fw_context*c,uint16_t a,unsigned w,uint32_t mask,uint32_t expected){
- unsigned j;uint32_t v;int e;for(j=0;j<1000U;j++){e=rd(c,a,w,&v);if(e)return e;if((v&mask)==expected)return 0;if(j<999U)c->bus.delay_us(c->bus.cookie,10);}
+ unsigned j;uint32_t v;int e;for(j=0;j<4000U;j++){e=rd(c,a,w,&v);if(e)return e;if((v&mask)==expected)return 0;if(j<3999U)c->bus.delay_us(c->bus.cookie,50);}
+ return error(c,ETIMEDOUT);
+}
+static int poll_long(rtw88_fw_context*c,uint16_t a,unsigned w,uint32_t mask,uint32_t expected){
+ /* 1.0.39: FW-ready wait widened from ~10 ms of 10 us steps to 4000 x 250 us (~1 s+). */
+ unsigned j;uint32_t v;int e;for(j=0;j<4000U;j++){e=rd(c,a,w,&v);if(e)return e;if((v&mask)==expected)return 0;if(j<3999U)c->bus.delay_us(c->bus.cookie,250);}
  return error(c,ETIMEDOUT);
 }
 static int cpu(rtw88_fw_context*c,int enable){int e;if(enable){e=update(c,0x1d,1,1,1);return e?e:update(c,3,1,4,4);}e=update(c,3,1,4,0);return e?e:update(c,0x1d,1,1,0);}
@@ -108,7 +113,7 @@ int rtw88_fw_download(rtw88_fw_context*c,const uint8_t*b,size_t n,uint8_t*scratc
  TRY(wr(c,0x210,4,BIT(2)));TRY(rd(c,FWCTRL,2,&fw));if((fw&0x50U)!=0x50U){e=error(c,EBADMSG);goto fail;}
  TRY(wr(c,FWCTRL,2,(fw|BIT(14))&~1U));TRY(cpu(c,1));
  TRY(error(c,c->bus.coex_write(c->bus.cookie,0x38,coex)));
- TRY(poll(c,FWCTRL,2,0xcfffU,0xc078U));
+ TRY(poll_long(c,FWCTRL,2,0xcfffU,0xc078U));
  c->firmware_running=1;c->h2c_box=0;return 0;
 fail:
  if(mutated){

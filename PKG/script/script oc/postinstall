@@ -2,17 +2,6 @@
 # script for Mount EFI
 # chris1111 
 
-#Filename of Application.
-APP="StatusBarApp"
-HELPER="RtWlanHelper"
-INF_NAME="netrtwlanu.inf"
-AUX_PATH="com.realtek.utility.wifi"
-
-
-#APP location.
-ROOT_PATH="/Library/Application Support/WLAN"
-AUX_PATH="com.realtek.utility.wifi"
-UTILITY_SOCK_NAME="/var/tmp/com.realtek.utility.statusbar.socket"
 
 
 echo "==============================================="
@@ -46,8 +35,6 @@ echo " ---------------------------------------------
 Cleanup EFI "
 cp -R /"$3"/Private/tmp/EFI /Volumes/ESP
 rm -rf /"$3"/Private/tmp/EFI
-sudo mv "$ROOT_PATH/$HELPER" "$ROOT_PATH/$AUX_PATH/"
-sudo chmod -R 777 "$ROOT_PATH/$AUX_PATH/"
 # Remove link to the partition that contain the EFI folder
 rm -rf "${DEST_VOL}"/EFIROOTDIR
 
@@ -56,4 +43,4 @@ exit 0
 
 
 
-		
+                

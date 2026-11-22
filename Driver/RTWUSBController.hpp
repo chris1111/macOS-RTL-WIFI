@@ -100,7 +100,11 @@ protected:
 private:
     enum { RXSlots = 4, TXCapacity = 4352 };
     enum GateOperation { Initialize = 1, Shutdown, Enable, Disable, Output,
-                         Control, Terminated, Sleep, Wake, TeardownReady };
+                         Control, Terminated, Sleep, Wake, TeardownReady,
+                         /* 1.0.5/1.0.6: captures the device provider for the
+                          * software re-plug while the gate is held; the
+                          * re-enumeration itself runs off-gate. */
+                         SoftwareReplug };
     struct Transfer {
         RTWUSBController *owner;
         IOBufferMemoryDescriptor *memory;
@@ -176,6 +180,17 @@ private:
      * names the firmware's own outcome for the DISCOVER: transmitted,
      * dropped internally, or never attempted. */
     uint64_t dhcpTxReports_ = 0, dhcpReportWaits_ = 0;
+    void ccmpSelfTest(); char txProtHex_[3][224] = {}; unsigned txProtHexCount_ = 0;
+    uint64_t txPipeFrames_[4] = {}, txMgmtFrames_ = 0, txDataFrames_ = 0, txEapolSent_ = 0, lastEapolPipe_ = 0, lastEapolQsel_ = 0, lastEapolRate_ = 0, lastEapolLen_ = 0, lastEapolQos_ = 0;
+    uint32_t faultCode_ = 0, faultSite_ = 0, faultDetail_ = 0, faultIcState_ = 0, faultRunning_ = 0;
+    uint64_t faultAfterAttachMS_ = 0, coexErrAfterAttachMS_ = 0;
+    uint64_t joinBringUpRetries_ = 0, attachBringUpRetries_ = 0;
+    uint32_t r88BootSub_ = 0, r88StartFailSub_ = 0, r88StartFailDetail_ = 0;
+    uint32_t r88StartFailStage_ = 0, r88StartFailErr_ = 0, r88StartFails_ = 0;
+    uint32_t coexErr_ = 0, coexErrSite_ = 0, coexErrSiteLatched_ = 0, coexTickFails_ = 0, coexTickErrors_ = 0;
+    uint64_t joinStateMS_[5] = {}, disableIgnored_ = 0, txReportCalls_ = 0, txReportLastLen_ = 0, rxDataFrames_ = 0, rxDataToUs_ = 0, rxDataBcast_ = 0, rxMgmtFrames_ = 0;
+    uint64_t eapolReportPending_ = 0, eapolReports_ = 0, eapolRepOK_ = 0, eapolRepRetryOver_ = 0, eapolRepLifetime_ = 0, eapolRepRetries_ = 0, eapolRepRate_ = 0;
+    uint64_t dhcpRepOK_ = 0, dhcpRepRetryOver_ = 0, dhcpRepLifetime_ = 0, dhcpRepRetries_ = 0, dhcpRepRate_ = 0;
     unsigned dhcpReportPending_ = 0;
     uint64_t lastDhcpReportCheckMs_ = 0;
     struct RateControl {
@@ -290,9 +305,19 @@ private:
         uint32_t lastSupplicantState = 0;
         bool active = false;
     } wpaRecovery_{};
+    /* 1.0.7: a spent WPA handshake budget must NEVER freeze the station.
+     * 1.0.6 latched WPARecoveryFailed and the state-machine gate then
+     * rejected every AUTH/ASSOC/RUN with ETIMEDOUT until the kext
+     * reloaded - a field shape of "join accepted, silence forever, only a
+     * kext reload helps". wpaStandDown_ replaces the latch: one join
+     * request gets four handshake windows; when they are spent the driver
+     * stands down (scans continue, nothing is torn down) and the flag is
+     * cleared by the NEXT join request, which buys a fresh budget. */
+    bool wpaStandDown_ = false;
     bool usbOpened_ = false, present_ = false, runtimeLease_ = false;
     bool attached_ = false, running_ = false, enabled_ = false;
-    bool radioReady_ = false, joinRequested_ = false, sleeping_ = false;
+    bool radioReady_ = false, joinRequested_ = false, sleeping_ = false, everReachedAuth_ = false;
+    bool tx88Auth_ = false, tx88Stall_ = false; void snapshotTx88(const char*tag);
     bool stopping_ = false, powerManaged_ = false, retainedForPending_ = false;
     bool macReady_ = false, closing_ = false;
     thread_call_t cleanupCall_ = nullptr;
@@ -300,6 +325,62 @@ private:
     void markTeardownReady();
     void scheduleDeferredCleanup();
     static void deferredCleanup(thread_call_param_t, thread_call_param_t);
+    /* 1.0.5 boot-wedge cure. Field log 2026-11-17 21:46: after a reboot the
+     * kext can claim the dongle before the USB port is fully ready; the
+     * controller registers (MAC/version OIDs answer) but every chip
+     * bring-up fails and the watchdog exits early while !running_, so
+     * nothing ever retries - only a physical replug fixed it. This is the
+     * same cure in software: IOUSBHostDevice::reset() on the USB device
+     * provider (Apple's replacement for the legacy IOUSBDevice::
+     * ReEnumerateDevice, declared in every SDK from 10.11 through macOS 26)
+     * re-runs port reset + enumeration exactly like replug. */
+    thread_call_t reenumCall_ = nullptr;
+    bool reenumQueued_ = false;
+    uint32_t wedgedBringUps_ = 0, reenumFires_ = 0;
+    bool bringUpEverSucceeded_ = false;
+    void scheduleSoftwareReplug(const char *why, bool timeBased = false);
+    static void reenumerateCall(thread_call_param_t, thread_call_param_t);
+    /* 1.0.6 reboot-2 cure (field report 2026-11-18: "reboot 1 ok but not
+     * work after reboot 2"). The failure ladder above needs its 4th counted
+     * bring-up failure, but in the field wedge the FIRST failed bring-up
+     * latches usbError_ (fault()), so every later enableStation() call
+     * early-outs at the guards and nothing ever counts - the re-plug never
+     * fired. rescueTimer_ ticks for the first minutes of every attach and
+     * fires the same software re-plug on TIME instead: bring-up never
+     * succeeded within 45 s of a real attempt, or a requested join never
+     * authorized within 120 s while the station runs as a zombie. The
+     * rescue is disarmed for good the moment the user first sees a working
+     * connection (bootEverAuthorized_ in setLinkStatus) and outside the
+     * boot window, so a healthy session is never replugged. */
+    IOTimerEventSource *rescueTimer_ = nullptr;
+    bool bootEverAuthorized_ = false, bootRescueArmed_ = false;
+    bool rescueWhyLogged_ = false;
+    uint64_t bootAttachCompleteMS_ = 0, firstJoinRequestedMS_ = 0;
+    /* 1.0.7 field fix (RTLWiFiBar.log 2026-11-18 06:21-06:23): the zombie
+     * clock was anchored at the FIRST join of the attach, so a join the
+     * user submitted minutes later could be killed mid-association by a
+     * re-plug armed from a dead first attempt. The rescue now judges the
+     * CURRENT requested join: lastJoinRequestedMS_ is stamped on every
+     * accepted join and the zombie rule fires only when THIS join has
+     * been unauthorized for 120 s (and never while AUTH/ASSOC run). */
+    uint64_t lastJoinRequestedMS_ = 0;
+    uint64_t lastRunMs_ = 0; /* 1.0.11: last time ic_state reached RUN, for the flappy-association re-arm */
+    /* 1.0.16: the 1.0.15 cold-attach gate members were removed together
+     * with the gate itself (deadlock with the app's scan suppression). */
+    IOReturn executeJoinTail(const RTWControlJoin *join);
+    uint32_t bringUpAttempts_ = 0;
+    static void bootRescueTick(OSObject *, IOTimerEventSource *);
+    /* 1.0.9 session rescue (RTLWiFiBar.log 2026-11-18 07:42-07:48, driver
+     * 1.0.8: the DHCP auto-heal's restart latched usbError_ mid-session and
+     * the boot rescue refused to fire because bootEverAuthorized_ was true -
+     * the dongle sat dead, 0xe00002d8 on every scan, for 6+ minutes until a
+     * physical replug). The app's 1 Hz status poll lands in the NotReady
+     * guard of handleControl while the transport is latched; once the fault
+     * persists 20 s the driver re-plugs itself (max 2 per attach, the
+     * boot rescue's global per-boot ceiling still applies). */
+    uint64_t sessionFaultSinceMS_ = 0;
+    uint32_t sessionReplugFires_ = 0;
+    void considerSessionRescue();
 
     static IOReturn gated(OSObject *, void *, void *, void *, void *);
     static void usbCompletion(void *, void *, IOReturn, uint32_t);
@@ -351,7 +432,7 @@ private:
     void closeUSBProvider();
     void releasePlatform();
     void eraseProfile();
-    void fault(IOReturn);
+    void fault(IOReturn error, uint32_t site = 0, uint32_t detail = 0);
     uint32_t readRegister(uint16_t, uint8_t);
     int writeRegister(uint16_t, uint8_t, uint32_t);
     int vendorRequest(bool, uint16_t, uint8_t *, size_t);

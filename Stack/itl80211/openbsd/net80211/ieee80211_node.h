@@ -52,6 +52,7 @@
 
 #define	IEEE80211_PSCAN_WAIT	5		/* passive scan wait */
 #define	IEEE80211_TRANS_WAIT	5		/* transition wait */
+#define	IEEE80211_AUTH_WAIT	1		/* 1.0.32: auth/assoc retry wait (s); was 5, x3 tries = 15 s */
 #define	IEEE80211_INACT_WAIT	5		/* inactivity timer interval */
 #define	IEEE80211_INACT_MAX	(300/IEEE80211_INACT_WAIT)
 #define	IEEE80211_CACHE_SIZE	200

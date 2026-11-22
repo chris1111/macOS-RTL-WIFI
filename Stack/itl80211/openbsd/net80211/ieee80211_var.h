@@ -494,6 +494,11 @@ struct ieee80211com {
 	CTimeout*		ic_node_cache_timeout;
 #endif
 	int			ic_des_esslen;
+	u_int8_t		ic_join_chan_hint;	/* 1.0.31: scan this channel first */
+	u_int8_t		ic_bad_valid;	/* 1.0.38: last BSS whose AUTH/ASSOC timed out */
+	u_int8_t		ic_bad_bssid[6];
+	u_int8_t		ic_join_alt24;	/* 1.0.41: best 2.4 GHz channel of the target SSID (0 = none) */
+	u_int8_t		ic_avoid5;	/* 1.0.41: a 5 GHz AUTH/ASSOC timed out: prefer 2.4 GHz until RUN */
 	u_int8_t		ic_des_essid[IEEE80211_NWID_LEN];
 	struct ieee80211_channel *ic_des_chan;	/* desired channel */
 	u_int8_t		ic_des_bssid[IEEE80211_ADDR_LEN];

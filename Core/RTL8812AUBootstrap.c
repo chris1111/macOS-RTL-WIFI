@@ -119,24 +119,29 @@ int rtw_r12au_download_fw(rtw_r12au_boot*c,const uint8_t*image,size_t n,rtw_boot
  if(report&&(overlap(report,sizeof(*report),image,n)||overlap(report,sizeof(*report),c,c?sizeof(*c):0)))return EINVAL;
  if(report)memset(report,0,sizeof(*report));if(!valid(c)||!report||!c->identified||!c->powered||!c->dma_prepared)return EINVAL;
  if(c->io_error)return c->io_error;if(c->firmware_running)return EBUSY;if((e=rtw_r12au_fw_inspect(c->chip,image,n,&fw)))return e;
- c->firmware_running=0;c->mac_initialized=0;c->h2c_box=0;report->version=fw.version;report->subversion=fw.subversion;
+ c->dl_site=0;c->dl_detail=0;c->firmware_running=0;c->mac_initialized=0;c->h2c_box=0;report->version=fw.version;report->subversion=fw.subversion;
  if((e=rtw_r12au_read(c,REG_MCUFW_CTRL,1,&status)))return e;if(status&BIT_RAM_DL_SEL)return EBUSY;
- if((e=reset_mcu(c))||(e=mcu_update(c,1,BIT_MCUFWDL_EN,BIT_MCUFWDL_EN)))goto fail;
+ c->dl_site=1;if((e=reset_mcu(c))||(e=mcu_update(c,1,BIT_MCUFWDL_EN,BIT_MCUFWDL_EN)))goto fail;c->dl_site=2;
  if((e=poll(c,REG_MCUFW_CTRL,1,BIT_MCUFWDL_EN,BIT_MCUFWDL_EN,10,20000)))goto fail;
- if((e=rtw_r12au_update(c,REG_MCUFW_CTRL+2,1,BIT(3),0)))goto fail;
+ c->dl_site=3;if((e=rtw_r12au_update(c,REG_MCUFW_CTRL+2,1,BIT(3),0)))goto fail;c->dl_site=4;
  /* Explicit W1C reset before writing a single image byte. */
  if((e=rtw_r12au_read(c,REG_MCUFW_CTRL,1,&status))||(e=rtw_r12au_write(c,REG_MCUFW_CTRL,1,status|BIT_FWDL_CHK_RPT))||(e=rtw_r12au_read(c,REG_MCUFW_CTRL,1,&status)))goto fail;
- if(status&BIT_FWDL_CHK_RPT){e=latch(c,EIO);goto fail;}
+ c->dl_detail=status;
+ /* The checksum bit can stay set from a previous firmware run (warm reboot) and is not always
+  * write-one-to-clear on 8821AU. Try a plain clear; if it still sticks, carry on: the final
+  * firmware-ready poll is the real success test. */
+ if(status&BIT_FWDL_CHK_RPT){if((e=rtw_r12au_write(c,REG_MCUFW_CTRL,1,BIT_MCUFWDL_EN))||(e=rtw_r12au_read(c,REG_MCUFW_CTRL,1,&status)))goto fail;c->dl_detail=status|0x100;}
+ c->dl_site=6;
  while(done<fw.payload_length){unsigned page=(unsigned)(done/4096);size_t left=fw.payload_length-done;if(left>4096)left=4096;
   if((e=rtw_r12au_update(c,REG_MCUFW_CTRL+2,1,7,page)))goto fail;report->pages_written=(uint8_t)(page+1);
   size_t in_page=0;while(in_page<left){size_t rem=left-in_page;uint16_t count=(uint16_t)(rem>=196?196:rem>=8?8:1);
-   if(rtw_usb_write_block(&c->bus,(uint16_t)(0x1000+in_page),fw.payload+done+in_page,count)!=RTW_USB_OK){e=latch(c,EIO);goto fail;}
+   if(rtw_usb_write_block(&c->bus,(uint16_t)(0x1000+in_page),fw.payload+done+in_page,count)!=RTW_USB_OK){c->dl_site=7;c->dl_detail=(uint32_t)(page*4096+in_page);e=latch(c,EIO);goto fail;}
    in_page+=count;report->bytes_written+=count;++report->vendor_writes;
   }done+=left;
  }
- if((e=poll(c,REG_MCUFW_CTRL,4,BIT_FWDL_CHK_RPT,BIT_FWDL_CHK_RPT,2000,10)))goto fail;report->checksum_seen=1;
+ c->dl_site=8;if((e=poll(c,REG_MCUFW_CTRL,4,BIT_FWDL_CHK_RPT,BIT_FWDL_CHK_RPT,2000,10)))goto fail;report->checksum_seen=1;c->dl_site=9;
  if((e=download_disable(c))||(e=mcu_update(c,4,BIT_MCUFWDL_RDY|BIT_WINTINI_RDY,BIT_MCUFWDL_RDY))||(e=reset_mcu(c)))goto fail;
- if((e=poll(c,REG_MCUFW_CTRL,4,FW_READY_LEGACY,FW_READY_LEGACY,10,20000)))goto fail;
+ c->dl_site=10;if((e=poll(c,REG_MCUFW_CTRL,4,FW_READY_LEGACY,FW_READY_LEGACY,10,20000)))goto fail;
  if((e=rtw_r12au_read(c,REG_MCUFW_CTRL,4,&status)))goto fail;report->last_mcu_fwdl=status;report->firmware_ready=1;
  c->firmware_running=1;c->firmware_version=fw.version;c->firmware_subversion=fw.subversion;return 0;
 fail:

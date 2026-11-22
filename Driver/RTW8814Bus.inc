@@ -29,6 +29,6 @@ int RTWUSBController::acBulk(void*p,uint8_t qsel,const uint8_t*bytes,size_t leng
     auto result=memory->prepare(kIODirectionOut);uint32_t actual=0;
     if(result==kIOReturnSuccess){result=s->txPipes_[0]->io(memory,(uint32_t)wire,actual,1000);memory->complete(kIODirectionOut);}
     memory->release();
-    if(result!=kIOReturnSuccess||actual!=wire){s->fault(result==kIOReturnSuccess?kIOReturnUnderrun:result);return EIO;}
+    if(result!=kIOReturnSuccess||actual!=wire){s->fault(result==kIOReturnSuccess?kIOReturnUnderrun:result,13,(uint32_t)length);return EIO;}
     return 0;
 }

@@ -1555,6 +1555,13 @@ justcleanup:
 				    ieee80211_state_name[nstate]);
 			break;
 		case IEEE80211_S_SCAN:
+			/* 1.0.42: after a warm reboot the dongle's MAC keeps
+			 * ACKing the AP, so the AP may still hold our previous
+			 * association and ignore a fresh AUTH for tens of
+			 * seconds (field: 10-45 s joins on both bands only
+			 * right after a reboot). Tell it we left first. */
+			IEEE80211_SEND_MGMT(ic, ni,
+			    IEEE80211_FC0_SUBTYPE_DEAUTH, IEEE80211_REASON_AUTH_LEAVE);
 			IEEE80211_SEND_MGMT(ic, ni,
 			    IEEE80211_FC0_SUBTYPE_AUTH, 1);
 			break;

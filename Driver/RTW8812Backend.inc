@@ -127,6 +127,8 @@ int RTWUSBController::peer8812Operating(rtw_r12au_operating*out) const
      * at the admitted20MHz definition for DFS. */
     if(rtw_station_is_dfs_channel((uint8_t)primary)){
         if(op.mode==RTW_R12AU_MODE_VHT)op.mode=RTW_R12AU_MODE_HT;
+    }else if(auCore_.chip==RTW_R12AU_CHIP_8821AU&&op.mode!=RTW_R12AU_MODE_LEGACY){
+        /* 8821AU: IQK does not converge on this silicon at 40/80 MHz, so stay on the 20 MHz primary channel (VHT20/HT20). */
     }else if(op.mode!=RTW_R12AU_MODE_LEGACY){
         if(n->ni_chw==IEEE80211_CHAN_WIDTH_40){op.width_mhz=40;unsigned sco=n->ni_htop0&IEEE80211_HTOP0_SCO_MASK;if(sco==IEEE80211_HTOP0_SCO_SCA)op.center=(uint8_t)(primary+2);else if(sco==IEEE80211_HTOP0_SCO_SCB&&primary>2)op.center=(uint8_t)(primary-2);else return EINVAL;}
         else if(n->ni_chw==IEEE80211_CHAN_WIDTH_80&&op.mode==RTW_R12AU_MODE_VHT){op.width_mhz=80;op.center=n->ni_vht_chan1;}
@@ -231,34 +233,35 @@ int RTWUSBController::start8812()
     if(!is8812Family()||!owns8812Authority()||ic.ic_opmode!=IEEE80211_M_STA||!ic.ic_bss||!auPHYStorage_||ioError(this))return ENXIO;
     if(auCore_.powered||auCore_.firmware_running||auCore_.mac_initialized)return EBUSY;
     refresh8812Modes();auCoex_=nullptr;auCoexTxBytes_=auCoexRxBytes_=0;auCoexTxFrames_=auCoexRxFrames_=0;auCoexRxRate_=auCoexTxRate_=2;auMediaConnected_=auRateReady_=auRSSIValid_=false;auRateConfig_={};auChannel_=auRSSI_=0;auOperating_={};auPHY_=nullptr;radioReady_=false;core_.core_error=0;
-    int e=0;if(auCore_.io_error||!auCore_.identified){e=initialize8812Core();if(e)goto fail;}
-    e=allocateTransfers();if(e)goto fail;
+    int e=0,stage=1;if(auCore_.io_error||!auCore_.identified){e=initialize8812Core();if(e)goto fail;}
+    stage=2;e=allocateTransfers();if(e)goto fail;
     {
         const uint8_t*firmware=auCore_.chip==RTW_R12AU_CHIP_8812AU?RTW8812AUFirmware:RTW8821AUFirmware;
         const size_t size=auCore_.chip==RTW_R12AU_CHIP_8812AU?sizeof(RTW8812AUFirmware):sizeof(RTW8821AUFirmware);
         rtw_fw_image header{};rtw_boot_report report{};
-        e=rtw_r12au_fw_inspect(auCore_.chip,firmware,size,&header);if(e)goto fail;
-        e=rtw_r12au_power_on(&auCore_);if(e)goto fail;
-        e=rtw_r12au_dma_prepare(&auCore_);if(e)goto fail;
-        e=rtw_r12au_download_fw(&auCore_,firmware,size,&report);if(e)goto fail;
+        stage=3;e=rtw_r12au_fw_inspect(auCore_.chip,firmware,size,&header);if(e)goto fail;
+        stage=4;e=rtw_r12au_power_on(&auCore_);if(e)goto fail;
+        stage=5;e=rtw_r12au_dma_prepare(&auCore_);if(e)goto fail;
+        stage=6;e=rtw_r12au_download_fw(&auCore_,firmware,size,&report);if(e)goto fail;
     }
-    e=rtw_r12au_mac_init(&auCore_);if(e)goto fail;
-    e=rtw_r12au_phy_init(auPHYStorage_,auPHYSize_,&auCore_.board.phy,&auCore_.bus,&auCore_.waiter,&auPHY_);if(e)goto fail;
-    e=rtw_r12au_phy_load_tables(auPHY_);if(e)goto fail;
-    {uint32_t report=0;e=rtw_r12au_read(&auCore_,0x804,4,&report);if(e)goto fail;auCckHighPower_=(report&(1U<<16))!=0;}
-    ic.ic_bss->ni_chan=ic.ic_ibss_chan;e=set8812Channel((uint8_t)ieee80211_chan2ieee(&ic,ic.ic_ibss_chan));if(e)goto fail;
-    e=busInitialize(this);if(e)goto fail;
-    if(auCore_.board.phy.btcoex){
+    stage=7;e=rtw_r12au_mac_init(&auCore_);if(e)goto fail;
+    stage=8;e=rtw_r12au_phy_init(auPHYStorage_,auPHYSize_,&auCore_.board.phy,&auCore_.bus,&auCore_.waiter,&auPHY_);if(e)goto fail;
+    stage=9;e=rtw_r12au_phy_load_tables(auPHY_);if(e)goto fail;
+    stage=10;{uint32_t report=0;e=rtw_r12au_read(&auCore_,0x804,4,&report);if(e)goto fail;auCckHighPower_=(report&(1U<<16))!=0;}
+    stage=11;ic.ic_bss->ni_chan=ic.ic_ibss_chan;e=set8812Channel((uint8_t)ieee80211_chan2ieee(&ic,ic.ic_ibss_chan));if(e)goto fail;
+    stage=12;e=busInitialize(this);if(e)goto fail;
+    if(auCore_.board.phy.btcoex){stage=13;
         if(!auCoexStorage_){e=ENOMEM;goto fail;}
         e=rtw_r21au_coex_init(auCoexStorage_,auCoexSize_,&auCore_,&auCoex_);if(e)goto fail;
-        {auto input=input8812Coex();e=rtw_r21au_coex_start(auCoex_,&input);}if(e)goto fail;
+        stage=14;{auto input=input8812Coex();e=rtw_r21au_coex_start(auCoex_,&input);}if(e)goto fail;stage=15;
         e=rtw_r21au_coex_bind_phy(auCoex_,auPHY_);if(e)goto fail;
     }
 
     ifq_clr_oactive(&ifp.if_snd);ifp.if_flags|=IFF_RUNNING;
-    e=ic.ic_newstate(&ic,IEEE80211_S_SCAN,-1);if(e)goto fail;
+    stage=16;e=ic.ic_newstate(&ic,IEEE80211_S_SCAN,-1);if(e)goto fail;
     radioReady_=true;if(auCoex_)nextCalibration(this);return 0;
 fail:
+    r88StartFailStage_=(uint32_t)stage;r88StartFailErr_=(uint32_t)e;++r88StartFails_;r88StartFailSub_=100+(stage==6?auCore_.dl_site:0);r88StartFailDetail_=auCore_.dl_detail;
     stop8812();core_.core_error=e;return e;
 }
 void RTWUSBController::stop8812()

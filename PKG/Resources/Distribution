@@ -13,12 +13,12 @@
         <line choice="cloverInstall"/>
         <line choice="uninstall"/>
     </choices-outline>
-    <choice id="ocInstall" title="OpenCore macOS-RTL-WIFI" description="Install ➔ /ESP/EFI/OC/macOS-RTL-WIFI.kext, Install ➔ /Library/Applications Support /WLAN Install ➔ /Library/LaunchAgents /Wlan.Software.plist" start_selected="true" selected="!(choices['cloverInstall'].selected || choices['uninstall'].selected)" enabled="!choices['uninstall'].selected">
+    <choice id="ocInstall" title="OpenCore macOS-RTL-WIFI" description="Install ➔ /ESP/EFI/OC/macOS-RTL-WIFI.kext, Install ➔ /Applications/RTLWiFiBar.app ➔ /Library/LaunchAgents/Wlan.Software.plist" start_selected="true" selected="!(choices['cloverInstall'].selected || choices['uninstall'].selected)" enabled="!choices['uninstall'].selected">
         <pkg-ref id="com.109Driver.WirelessUSBmacOS-RTL-WIFI.statusbarapp.pkg"/>
         <pkg-ref id="com.109Driver.WirelessUSBmacOS-RTL-WIFI.Agents.pkg"/>
         <pkg-ref id="com.109Driver.WirelessUSBmacOS-RTL-WIFI.EFIFOLDEROC.pkg"/>
     </choice>
-    <choice id="cloverInstall" title="Clover macOS-RTL-WIFI" description="Install ➔ /ESP/EFI/CLOVER/macOS-RTL-WIFI.kext, Install ➔ /Library/Applications Support /WLAN Install ➔ /Library/LaunchAgents /Wlan.Software.plist" start_selected="false" selected="!(choices['ocInstall'].selected || choices['uninstall'].selected)" enabled="!choices['uninstall'].selected">
+    <choice id="cloverInstall" title="Clover macOS-RTL-WIFI" description="Install ➔ /ESP/EFI/CLOVER/macOS-RTL-WIFI.kext, Install ➔ /Applications/RTLWiFiBar.app ➔ /Library/LaunchAgents/Wlan.Software.plist" start_selected="false" selected="!(choices['ocInstall'].selected || choices['uninstall'].selected)" enabled="!choices['uninstall'].selected">
         <pkg-ref id="com.109Driver.WirelessUSBmacOS-RTL-WIFI.statusbarapp.pkg"/>
         <pkg-ref id="com.109Driver.WirelessUSBmacOS-RTL-WIFI.Agents.pkg"/>
         <pkg-ref id="com.109Driver.WirelessUSBmacOS-RTL-WIFI.EFIFOLDERCLOVER.pkg"/>
@@ -26,7 +26,7 @@
     <choice id="EFIFOLDERCLOVER" title="Wireless Drivers Clover" start_visible="false">
         <pkg-ref id="com.109Driver.WirelessUSBmacOS-RTL-WIFI.EFIFOLDERCLOVER.pkg"/>
     </choice>
-    <choice id="uninstall" title="Uninstall Utility" description="Uninstall ➔ /Library/Applications Support /WLAN Uninstall ➔ /Library/LaunchAgents /Wlan.Software.plist Uninstall ➔ /Library/LaunchDaemons/Wlan.SoftwareDaemon.plist  WARNING: You Uninstall ➔ /EFI/OC/kexts/macOS-RTL-WIFI.kext, Uninstall ➔ /EFI/CLOVER/kexts/Other/macOS-RTL-WIFI.kext " start_selected="false" selected="!(choices['ocInstall'].selected || choices['cloverInstall'].selected)">
+    <choice id="uninstall" title="Uninstall Utility" description="Uninstall ➔ /Applications/RTLWiFiBar.app ➔ /Library/LaunchAgents/Wlan.Software.plist WARNING: You Uninstall ➔ /EFI/OC/kexts/macOS-RTL-WIFI.kext, Uninstall ➔ /EFI/CLOVER/kexts/Other/macOS-RTL-WIFI.kext " start_selected="false" selected="!(choices['ocInstall'].selected || choices['cloverInstall'].selected)">
         <pkg-ref id="com.109Driver.WirelessUSBmacOS-RTL-WIFI.uninstall.pkg"/>
     </choice>
     <pkg-ref id="com.109Driver.WirelessUSBmacOS-RTL-WIFI.statusbarapp.pkg" installKBytes="7276" version="1.0" auth="Root" onConclusion="RequireRestart">#statusbarapp.pkg</pkg-ref>

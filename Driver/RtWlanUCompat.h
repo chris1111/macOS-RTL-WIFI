@@ -103,6 +103,12 @@ typedef struct RTWlanUOidFrame {
  * OID_802_11_INFRASTRUCTURE_MODE query issued right after the
  * Disconnected-to-Connected transition; 0x0D010119 is OID_802_11_BSSID. */
 #define RTWLANU_QID_NETWORK_STATUS     0x00010114u
+/* 1.0.8 (RTLWiFiBar 8.7.14): honest join progress for the app's join
+ * monitor - dword0 = the net80211 station state (0 INIT, 1 SCAN, 2 AUTH,
+ * 3 ASSOC, 4 RUN), dword1 = ms since the last beacon of the associated
+ * BSS (0 = none). The stock utility never issues this OID; the answer is
+ * read-only state, so the vendor wire contract stays untouched. */
+#define RTWLANU_QID_JOIN_STATE         0x00010115u
 #define RTWLANU_QID_LINK_STATUS        0xFF819048u
 #define RTWLANU_QID_ASSOC_STATE        0xFF819053u
 #define RTWLANU_QID_INFRA_MODE         0x0D010108u
@@ -191,6 +197,6 @@ typedef struct RTWlanUOidFrame {
 
 /* Fixed driver version string surfaced in the utility About panel; also
  * published as the registry property "RtWlanDriverVersion". */
-#define RTWLANU_DRIVER_VERSION "1.0.3"
+#define RTWLANU_DRIVER_VERSION "1.1.1"
 
 #endif /* RTWLANU_COMPAT_H */

@@ -917,6 +917,36 @@ ieee80211_watchdog(struct _ifnet *ifp)
                 ieee80211_node_join_bss(ic, ni);
                 goto done;
             }
+            /* 1.0.38: this BSS did not answer (e.g. a 5 GHz AP right after a
+             * reboot). Remember it so the next selection prefers another BSS
+             * of the same SSID, and aim the next scan straight at that
+             * channel instead of sweeping every band (~9 s). */
+            if (ic->ic_bss && ic->ic_bss->ni_esslen) {
+                struct ieee80211_node *an, *alt = NULL;
+                memcpy(ic->ic_bad_bssid, ic->ic_bss->ni_bssid, 6);
+                ic->ic_bad_valid = 1;
+                for (an = RB_MIN(ieee80211_tree, &ic->ic_tree); an != NULL;
+                     an = RB_NEXT(ieee80211_tree, &ic->ic_tree, an)) {
+                    if (!memcmp(an->ni_bssid, ic->ic_bad_bssid, 6)) continue;
+                    if (an->ni_esslen != ic->ic_bss->ni_esslen ||
+                        memcmp(an->ni_essid, ic->ic_bss->ni_essid, an->ni_esslen)) continue;
+                    if (!an->ni_chan || an->ni_chan == IEEE80211_CHAN_ANYC) continue;
+                    if (alt == NULL || an->ni_rssi > alt->ni_rssi) alt = an;
+                }
+                if (alt) {
+                    int ch = ieee80211_chan2ieee(ic, alt->ni_chan);
+                    if (ch >= 1 && ch < 255) ic->ic_join_chan_hint = (u_int8_t)ch;
+                }
+                /* 1.0.41: a 5 GHz BSS that does not answer (typical right
+                 * after a reboot) sends us to the best 2.4 GHz channel of
+                 * the SSID, remembered from the survey before the quiesce
+                 * emptied the node tree. */
+                if (ic->ic_bss->ni_chan && ic->ic_bss->ni_chan != IEEE80211_CHAN_ANYC &&
+                    IEEE80211_IS_CHAN_5GHZ(ic->ic_bss->ni_chan)) {
+                    ic->ic_avoid5 = 1;
+                    if (ic->ic_join_alt24) ic->ic_join_chan_hint = ic->ic_join_alt24;
+                }
+            }
             if (ISSET(ic->ic_flags, IEEE80211_F_AUTO_JOIN))
                 ieee80211_deselect_ess(ic);
         }

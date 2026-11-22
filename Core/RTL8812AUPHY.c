@@ -114,7 +114,7 @@ static void rtw_write_rf(struct rtw_r12au_phy*p,enum rtw_rf_path path,u32 a,u32 
  if(m!=RFREG_MASK){u32 old=rtw_read_rf(p,path,a,RFREG_MASK);v=(old&~m)|((v<<shift(m))&m);}
  wr(p,path==RF_PATH_A?REG_LSSI_WRITE_A:REG_LSSI_WRITE_B,4,((a&0xffU)<<20)|(v&RFREG_MASK));r12_delay(p,13);
 }
-static void r12_wait_txempty(struct rtw_r12au_phy*p){for(unsigned i=0;i<50&&!p->io_error;++i){if((rd(p,REG_TXPKT_EMPTY,2)&0x30U)==0x30U)return;r12_delay(p,50);}fault(p,ETIMEDOUT);}
+static void r12_wait_txempty(struct rtw_r12au_phy*p){for(unsigned i=0;i<50&&!p->io_error;++i){if((rd(p,REG_TXPKT_EMPTY,2)&0x30U)==0x30U)return;r12_delay(p,50);}/* vendor drivers just stop waiting; a busy TX FIFO must not latch the chip dead */}
 #include "RTL8812AUAlgorithms.inc"
 #undef udelay
 #undef mdelay
@@ -271,7 +271,11 @@ int rtw_r12au_phy_calibrate(rtw_r12au_phy*p){
  /* Restore page/CCA even on a failing backup or USBtransfer. */
  p->cleanup=true;wr(p,REG_CCASEL,4,page);wr(p,REG_CCA2ND,4,cca);p->cleanup=false;pause_tx(p);
  if(p->io_error)return p->io_error;
- if(p->cal_timeout||p->tx_iqk_mask!=required||p->rx_iqk_mask!=required)return ETIMEDOUT;
+ if(p->cal_timeout||p->tx_iqk_mask!=required||p->rx_iqk_mask!=required){
+  /* 8821AU: an IQK that does not converge (common on 5 GHz) must not kill the chip; the vendor
+   * driver keeps the default IQ coefficients and carries on. 8812AU keeps the strict rule. */
+  if(p->chip->id!=RTW_CHIP_TYPE_8821A)return ETIMEDOUT;
+ }
  if(p->chip->id==RTW_CHIP_TYPE_8812A&&p->hal.current_band_type){if(p->hal.current_channel<=64)apply(p,rtw8812a_agc_diff_lb,ARRAY_SIZE(rtw8812a_agc_diff_lb),-1);else apply(p,rtw8812a_agc_diff_hb,ARRAY_SIZE(rtw8812a_agc_diff_hb),-1);}
  p->calibrated=!p->io_error;return p->io_error;
 }

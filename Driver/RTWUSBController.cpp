@@ -44,6 +44,16 @@ static IOReturn fromErrno(int error) {
     default: return kIOReturnIOError;
     }
 }
+/* 1.0.5 software re-plug budget, per boot across every controller instance
+ * (re-enumeration spawns a fresh instance, so the per-attach cap alone
+ * would not bound a truly dead dongle). Six fires per boot is generous:
+ * the field wedge needed exactly one. */
+static uint32_t g_softwareReplugsSinceBoot = 0;
+static uint64_t g_lastSoftwareReplugMS = 0;
+/* 1.0.6 boot-rescue window: 12 minutes after each attach. The reboot-2
+ * wedge shows up in the first minutes; past the window the rescue is
+ * disarmed so a working session is never replugged from behind. */
+static const uint64_t RTW_BOOT_RESCUE_WINDOW_MS = 12ull * 60 * 1000;
 RTWUSBController *RTWUSBController::owner(void *p) { return static_cast<RTWUSBController *>(p); }
 IOWorkLoop *RTWUSBController::getWorkLoop() const { return loop_ ? loop_ : super::getWorkLoop(); }
 IOOutputQueue *RTWUSBController::createOutputQueue() { return IOGatedOutputQueue::withTarget(this, loop_, 256); }
@@ -163,6 +173,10 @@ bool RTWUSBController::setLinkStatus(UInt32 state, const IONetworkMedium *medium
     }
     bool result=super::setLinkStatus(state, medium, speed, data);
     if((state&kIONetworkLinkActive)&&authorized()){
+        /* 1.0.6: the first live carrier of this attach proves the hardware
+         * and the boot are good - the boot rescue is disarmed from here on,
+         * so no re-plug can ever disturb a session the user has seen. */
+        bootEverAuthorized_=true;
         cancelWpaRecovery();wpaRecovery_.state=WPARecoveryAuthorized;
         if(auto*queue=getOutputQueue())queue->start();
     }
@@ -182,9 +196,19 @@ IOReturn RTWUSBController::getHardwareAddress(IOEthernetAddress *address) {
     if (!macReady_) return kIOReturnNotReady;
     *address = mac_; return kIOReturnSuccess;
 }
-void RTWUSBController::fault(IOReturn error) {
+void RTWUSBController::fault(IOReturn error, uint32_t site, uint32_t detail) {
     if (error == kIOReturnSuccess) return;
-    if (usbError_ == kIOReturnSuccess) usbError_ = error;
+    if (usbError_ == kIOReturnSuccess) {
+        usbError_ = error;
+        /* 1.0.34: remember WHERE the first USB fault happened (published by
+         * publishDiagnostics, no registry write here: this can run in a
+         * completion context). Sites: 1/2 vendor read/write (detail=reg),
+         * 3 TX submit, 4 RX recovery, 5-10 RX completion, 11 terminate. */
+        faultCode_ = (uint32_t)error; faultSite_ = site; faultDetail_ = detail;
+        faultAfterAttachMS_ = bootAttachCompleteMS_ ? nowMS() - bootAttachCompleteMS_ : 0;
+        faultIcState_ = (uint32_t)core_.sc_ic.ic_state;
+        faultRunning_ = running_ ? 1 : 0;
+    }
     clear88Discovery(true);
     resetDFSStation();
     radioReady_ = false;
@@ -203,7 +227,7 @@ int RTWUSBController::vendorRequest(bool input, uint16_t address, uint8_t *bytes
     uint32_t actual = 0;
     IOReturn result = usb_->deviceRequest(request, bytes, actual, 1000);
     if (result != kIOReturnSuccess || actual != length) {
-        fault(result == kIOReturnSuccess ? kIOReturnUnderrun : result); return EIO;
+        fault(result == kIOReturnSuccess ? kIOReturnUnderrun : result, input ? 1 : 2, address); return EIO;
     }
     return 0;
 }
@@ -316,16 +340,57 @@ static const char* rtwStateName(ieee80211_state s) {
     default:return "?";
     }
 }
+void RTWUSBController::snapshotTx88(const char*tag) {
+    char b[420];char k[24];snprintf(k,sizeof k,"RTWTx88E_%s",tag);
+    const uint32_t cr=read2(this,0x100),dma=read4(this,0x10c),pause=read1(this,0x522),rcr=read4(this,0x608),bcn=read1(this,0x550),msr=read1(this,0x102),
+        bssid0=read4(this,0x618),bssid1=read2(this,0x61c),mac0=read4(this,0x610),mac1=read2(this,0x614),txdma=read4(this,0x210),ac=read4(this,0x508);
+    snprintf(b,sizeof b,"nOut=%u mps=%u,%u,%u map=%u,%u,%u,%u ch=%u CR=%04x TRXDMA=%08x TXPAUSE=%02x RCR=%08x BCNCTRL=%02x MSR=%02x BSSID=%08x%04x MAC=%08x%04x TXDMASTAT=%08x r508=%08x rxAgg=%u ioerr=%d",
+        (unsigned)endpoints_.num_bulk_out,(unsigned)txMPS_[0],(unsigned)txMPS_[1],(unsigned)txMPS_[2],(unsigned)core_.ac2idx[0],(unsigned)core_.ac2idx[1],(unsigned)core_.ac2idx[2],(unsigned)core_.ac2idx[3],
+        core_.sc_ic.ic_bss&&core_.sc_ic.ic_bss->ni_chan?(unsigned)ieee80211_chan2ieee(&core_.sc_ic,core_.sc_ic.ic_bss->ni_chan):0U,
+        cr,dma,pause,rcr,bcn,msr,bssid0,bssid1,mac0,mac1,txdma,ac,(unsigned)rxDiag_.aggregates,rtwn_io_error(&core_));
+    setProperty(k,b);IOLog("[macOS-RTL-WIFI 1.0.21] %s: %s\n",k,b);
+}
+/* 1.0.26: encrypt a known frame with the same software CCMP code the TX path uses,
+ * decrypt it with the RX code (proven against the AP's own group frames) and
+ * publish the verdict as RTWDiagCCMPSelfTest = 100 + code (100 = pass). */
+void RTWUSBController::ccmpSelfTest() {
+    auto&ic=core_.sc_ic;int code=0;
+    ieee80211_key k{};k.k_cipher=IEEE80211_CIPHER_CCMP;k.k_len=16;k.k_id=0;
+    for(unsigned i=0;i<16;i++)k.k_key[i]=(uint8_t)(i*7+3);
+    uint8_t original[64]{};ieee80211_frame*wh=reinterpret_cast<ieee80211_frame*>(original);
+    wh->i_fc[0]=IEEE80211_FC0_VERSION_0|IEEE80211_FC0_TYPE_DATA|IEEE80211_FC0_SUBTYPE_DATA;
+    wh->i_fc[1]=IEEE80211_FC1_DIR_TODS|IEEE80211_FC1_PROTECTED;
+    for(unsigned i=0;i<6;i++){wh->i_addr1[i]=(uint8_t)(0x10+i);wh->i_addr2[i]=ic.ic_myaddr[i];wh->i_addr3[i]=0xff;}
+    wh->i_seq[0]=0x30;wh->i_seq[1]=0x01;
+    for(unsigned i=24;i<64;i++)original[i]=(uint8_t)(i*5+1);
+    mbuf_t m=nullptr;mbuf_t enc=nullptr;mbuf_t dec=nullptr;
+    if(ieee80211_ccmp_set_key(&ic,&k))code=1;
+    else if(mbuf_allocpacket(MBUF_DONTWAIT,sizeof original,nullptr,&m)||!m||mbuf_copyback(m,0,sizeof original,original,MBUF_DONTWAIT))code=2;
+    else if(!(enc=ieee80211_ccmp_encrypt(&ic,m,&k)))code=3;
+    else if(mbuf_pkthdr_len(enc)!=sizeof original+IEEE80211_CCMP_HDRLEN+IEEE80211_CCMP_MICLEN)code=4;
+    else{
+        uint8_t hdr[32]{};
+        if(mbuf_copydata(enc,0,32,hdr)||hdr[24]!=(uint8_t)k.k_tsc||hdr[27]!=(uint8_t)((k.k_id<<6)|IEEE80211_WEP_EXTIV))code=5;
+        else if(!(dec=ieee80211_ccmp_decrypt(&ic,enc,&k))){code=6;enc=nullptr;}
+        else{
+            enc=nullptr;
+            uint8_t back[64]{};
+            if(mbuf_pkthdr_len(dec)!=sizeof original||mbuf_copydata(dec,0,sizeof back,back))code=8;
+            else{back[1]|=IEEE80211_FC1_PROTECTED;if(memcmp(back,original,sizeof original))code=7;}
+        }
+    }
+    if(dec)mbuf_freem(dec);
+    if(k.k_priv)ieee80211_ccmp_delete_key(&ic,&k);
+    setProperty("RTWDiagCCMPSelfTest",(unsigned long long)(100+code),32);
+    IOLog("[macOS-RTL-WIFI 1.0.26] CCMP self-test code=%d\n",code);
+}
 int RTWUSBController::stateTransition(ieee80211com *ic,ieee80211_state state,int argument) {
     auto*core=static_cast<rtwn_softc *>(ic->ic_softc);
     auto*s=owner(core->sc_ops.cookie);
-    if(s->wpaRecovery_.state==WPARecoveryFailed&&
-       (state==IEEE80211_S_AUTH||state==IEEE80211_S_ASSOC||state==IEEE80211_S_RUN))
-    {
-        IOLog("RtWlanUCompat: GATE wpa-lockout rejected %s -> %s\n",
-              rtwStateName(ic->ic_state),rtwStateName(state));
-        return ETIMEDOUT;
-    }
+    /* 1.0.7: the 1.0.6 WPA-lockout gate that rejected AUTH/ASSOC/RUN while
+     * WPARecoveryFailed was latched is GONE - the latch itself is gone
+     * (advanceWpaRecovery now stands down instead of freezing the station
+     * until a kext reload). */
     if (!s->joinRequested_ && (state==IEEE80211_S_AUTH || state==IEEE80211_S_ASSOC || state==IEEE80211_S_RUN))
     {
         IOLog("RtWlanUCompat: GATE no-join-requested rejected %s -> %s\n",
@@ -341,15 +406,29 @@ int RTWUSBController::stateTransition(ieee80211com *ic,ieee80211_state state,int
     if(!s->dfsStateAllowed(state,requestedChannel)){if(state==IEEE80211_S_AUTH&&!s->dfsTXBlocked())s->stopDFSStation();IOLog("RtWlanUCompat: GATE dfs rejected %s -> %s (ch %u)\n",rtwStateName(ic->ic_state),rtwStateName(state),requestedChannel);return EACCES;}
     if(state==IEEE80211_S_AUTH){const int power=s->prepareDFSPower(requestedChannel);if(power){s->stopDFSStation();IOLog("RtWlanUCompat: GATE dfs-power rejected %s -> %s (ch %u)\n",rtwStateName(ic->ic_state),rtwStateName(state),requestedChannel);return power;}}
     rtw_signal_reset(&s->signal_);
+    /* 1.0.14 shipped a pre-auth DEAUTH "ghost flush" here; removed in
+     * 1.0.15 after field testing showed no cure - the blocker is not an
+     * AP-side ghost but a cold firmware auth engine (see the cold-attach
+     * readiness gate in handleControl/considerColdGate). */
     int result=s->is8723Family()?s->state8723(ic,state,argument):s->is8710BUFamily()?s->state8710BU(ic,state,argument):s->is8192FUFamily()?s->state8192FU(ic,state,argument):s->family_==RTW_WIFI_RTL8192DU?s->state8192DU(ic,state,argument):s->is88Family()?s->state88(ic,state,argument):s->is8812Family()?s->state8812(ic,state,argument):s->family_==RTW_WIFI_RTL8814AU?s->state8814(ic,state,argument):rtwn_newstate(ic,state,argument);
     /* Some legacy register callbacks report a latched I/O error separately
      * from the backend return. It must not become a successful visit claim;
      * the diagnostic check leaves the transition's return value unchanged. */
     s->dfsStateChanged(state,requestedChannel,result?result:rtwn_io_error(core));
     s->observeScanTransition(previous,state,requestedChannel,result?result:rtwn_io_error(core));
-    if(!result&&state==IEEE80211_S_RUN){s->lastBeaconMs_=nowMS();s->resetRateControl();}
+    if(!result&&state==IEEE80211_S_RUN){s->core_.sc_ic.ic_bad_valid=0;s->core_.sc_ic.ic_avoid5=0;s->core_.sc_ic.ic_join_alt24=0;s->lastBeaconMs_=nowMS();s->lastRunMs_=nowMS();s->resetRateControl();}
     else if(state==IEEE80211_S_SCAN||state==IEEE80211_S_INIT)s->lastBeaconMs_=0;
+    /* 1.0.10: AUTH was actually reached and accepted by the state machine -
+     * the network exists and was visible. The boot-rescue auth-cycle
+     * detector keys on this so a merely absent network never re-plugs. */
+    if(!result&&state==IEEE80211_S_AUTH)s->everReachedAuth_=true;
     if(!result)s->wpaStateChanged(previous);
+    /* 1.0.30: how long after the join request each state was first entered. */
+    if(!result&&s->lastJoinRequestedMS_&&state>=IEEE80211_S_SCAN&&state<=IEEE80211_S_RUN&&!s->joinStateMS_[state]){
+        const uint64_t dt=nowMS()-s->lastJoinRequestedMS_;s->joinStateMS_[state]=dt?dt:1;
+        static const char*const names[5]={"","RTWDiagJoinScanMS","RTWDiagJoinAuthMS","RTWDiagJoinAssocMS","RTWDiagJoinRunMS"};
+        s->setProperty(names[state],(unsigned long long)s->joinStateMS_[state],64);
+    }
     return result;
 }
 void RTWUSBController::observeScanTransition(ieee80211_state previous,ieee80211_state requested,unsigned channel,int result) {
@@ -424,40 +503,43 @@ int RTWUSBController::publish88Identity() {
     setProperty("RTWChipIdentityVerified",true);return 0;
 }
 bool RTWUSBController::discoverUSB() {
+    auto why=[this](uint32_t code,uint32_t a=0,uint32_t b=0)->bool{if(usb_){usb_->setProperty("RTWDiscoveryFail",(unsigned long long)code,32);usb_->setProperty("RTWDiscoveryFailA",(unsigned long long)a,32);usb_->setProperty("RTWDiscoveryFailB",(unsigned long long)b,32);}return false;};
     IOUSBHostDevice *device=usb_->getDevice();
     const auto*d=device?device->getDeviceDescriptor():nullptr;
     const auto*i=usb_->getInterfaceDescriptor();const auto*c=usb_->getConfigurationDescriptor();
-    if(!d||!i||!c)return false;
+    if(!d||!i||!c)return why(1);
     profile_=rtw_usb_wifi_lookup_descriptor(USBToHost16(d->idVendor),USBToHost16(d->idProduct),
         USBToHost16(d->bcdDevice),c->bConfigurationValue,i->bInterfaceNumber,
         i->bInterfaceClass,i->bInterfaceSubClass,i->bInterfaceProtocol);
     r88DiscoveryProfile_=profile_;family_=rtw_usb_wifi_station_backend(profile_);
     if(family_==RTW_WIFI_UNKNOWN){
         rtw_chip_identity_descriptor descriptor{};
-        if(!read88IdentityDescriptor(&descriptor)||!rtw_chip_identity_candidate(profile_,&descriptor))return false;
+        if(!read88IdentityDescriptor(&descriptor)||!rtw_chip_identity_candidate(profile_,&descriptor))return why(2,(uint32_t)(uintptr_t)profile_!=0);
         const rtw88_fw_bus bus{this,r88Read,r88Write,r88Bulk,delayUS,nullptr,nullptr};
         r88DiscoveryProvider_=usb_;
         int e=rtw_chip_identity_init(r88IdentityStorage_,sizeof(r88IdentityStorage_),profile_,&descriptor,&bus,&r88ResolvedIdentity_);
         if(e||usb_!=r88DiscoveryProvider_){clear88Discovery(true);return false;}
         profile_=rtw_chip_identity_profile(r88ResolvedIdentity_);
-        if(!profile_)return false;family_=profile_->family;
-        if(!matches88Discovery()){clear88Discovery(true);return false;}
+        if(!profile_)return why(3);family_=profile_->family;
+        if(!matches88Discovery()){clear88Discovery(true);return why(4);}
     }
     /* Shared family registry covers every catalog chipset, but only backends
      * with an integrated station HAL may bind to an IOEthernetInterface.
      * A validated USB identity is not authorization to transmit. */
     const rtw_family_backend *backend=rtw_backend_for_family(family_);
     if(family_==RTW_WIFI_UNKNOWN||!backend||
-       !(backend->capabilities&RTW_BACKEND_CAP_KEXT_STATION))return false;
+       !(backend->capabilities&RTW_BACKEND_CAP_KEXT_STATION))return why(5,(uint32_t)family_,backend?backend->capabilities:0);
     size_t length=USBToHost16(c->wTotalLength);
-    if(length<9||length>4096||rtw_find_usb_bulk_endpoints((const uint8_t*)c,length,i->bInterfaceNumber,i->bAlternateSetting,&endpoints_)!=RTW_DESC_OK||endpoints_.num_bulk_in!=1||endpoints_.num_bulk_out<1||endpoints_.num_bulk_out>(family_==RTW_WIFI_RTL8814AU||is8812Family()||is88Family()?4:3))return false;
-    if((family_==RTW_WIFI_RTL8814AU||is8812Family()||is88Family())&&endpoints_.num_bulk_out<2)return false;
-    rxPipe_=usb_->copyPipe(endpoints_.bulk_in[0]);if(!rxPipe_)return false;
+    if(length<9||length>4096||rtw_find_usb_bulk_endpoints((const uint8_t*)c,length,i->bInterfaceNumber,i->bAlternateSetting,&endpoints_)!=RTW_DESC_OK||endpoints_.num_bulk_in!=1||endpoints_.num_bulk_out<1||endpoints_.num_bulk_out>(family_==RTW_WIFI_RTL8814AU||is8812Family()||is88Family()||family_==RTW_WIFI_RTL8723BU?4:3))return why(6,endpoints_.num_bulk_in,endpoints_.num_bulk_out);
+    /* RTL8723BU combo (Edimax EW-7611UCB) exposes 4 bulk-out endpoints; the station path uses the first 3. */
+    if(family_==RTW_WIFI_RTL8723BU&&endpoints_.num_bulk_out>3)endpoints_.num_bulk_out=3;
+    if((family_==RTW_WIFI_RTL8814AU||is8812Family()||is88Family())&&endpoints_.num_bulk_out<2)return why(7);
+    rxPipe_=usb_->copyPipe(endpoints_.bulk_in[0]);if(!rxPipe_)return why(8);
     for(unsigned p=0;p<endpoints_.num_bulk_out;p++) {
-        txPipes_[p]=usb_->copyPipe(endpoints_.bulk_out[p]);if(!txPipes_[p])return false;
-        const auto*e=txPipes_[p]->getEndpointDescriptor();if(!e)return false;
+        txPipes_[p]=usb_->copyPipe(endpoints_.bulk_out[p]);if(!txPipes_[p])return why(9,p);
+        const auto*e=txPipes_[p]->getEndpointDescriptor();if(!e)return why(10,p);
         txMPS_[p]=USBToHost16(e->wMaxPacketSize)&0x7ff;
-        if(txMPS_[p]!=64&&txMPS_[p]!=512&&!((family_==RTW_WIFI_RTL8814AU||is8812Family()||is88Family())&&txMPS_[p]==1024))return false;
+        if(txMPS_[p]!=64&&txMPS_[p]!=512&&!((family_==RTW_WIFI_RTL8814AU||is8812Family()||is88Family())&&txMPS_[p]==1024))return why(11,p,txMPS_[p]);
     }
     core_.ac2idx[EDCA_AC_BK]=core_.ac2idx[EDCA_AC_BE]=endpoints_.num_bulk_out>=3?2:endpoints_.num_bulk_out==2?1:0;
     core_.ac2idx[EDCA_AC_VI]=endpoints_.num_bulk_out>=3?1:0;core_.ac2idx[EDCA_AC_VO]=0;
@@ -465,7 +547,7 @@ bool RTWUSBController::discoverUSB() {
 }
 IOReturn RTWUSBController::initializePlatform() {
     reportStartStage("usb-discovery");
-    if(!discoverUSB()){reportStartStage("usb-discovery",kIOReturnUnsupported);return kIOReturnUnsupported;}
+    if(!discoverUSB()){if(usb_&&!usb_->getProperty("RTWDiscoveryFail"))usb_->setProperty("RTWDiscoveryFail",(unsigned long long)99,32);reportStartStage("usb-discovery",kIOReturnUnsupported);return kIOReturnUnsupported;}
     core_.chip=RTWN_CHIP_USB;core_.sc_flags=0;
     if(family_==RTW_WIFI_RTL8192EU){core_.chip|=RTWN_CHIP_92E;core_.sc_flags=RTWN_FLAG_EXT_HDR;}
     else if(family_==RTW_WIFI_RTL8188EU)core_.chip|=RTWN_CHIP_88E;
@@ -483,6 +565,27 @@ IOReturn RTWUSBController::initializePlatform() {
     int result=is8723Family()?attach8723():is8710BUFamily()?attach8710BU():is8192FUFamily()?attach8192FU():family_==RTW_WIFI_RTL8192DU?attach8192DU():is88Family()?attach88():is8812Family()?attach8812():family_==RTW_WIFI_RTL8814AU?attach8814():rtwn_attach(&device_,&core_,this);
     if(result){reportStartStage("rtwn-attach",fromErrno(result));return fromErrno(result);}
     attached_=true;
+    if(family_==RTW_WIFI_RTL8188EU){
+        const struct r88e_rom&r=core_.sc_r88e_rom;char b[220];
+        snprintf(b,sizeof b,"id=%04x xtal=%02x cck=%02x,%02x,%02x,%02x,%02x,%02x ht40=%02x,%02x,%02x,%02x,%02x diff=%02x chplan=%02x therm=%02x board=%02x feat=%02x ver=%02x cust=%02x vid=%04x pid=%04x mac=%02x:%02x:%02x:%02x:%02x:%02x",
+            (unsigned)r.id,r.xtal,r.txpwr.cck_tx_pwr[0],r.txpwr.cck_tx_pwr[1],r.txpwr.cck_tx_pwr[2],r.txpwr.cck_tx_pwr[3],r.txpwr.cck_tx_pwr[4],r.txpwr.cck_tx_pwr[5],
+            r.txpwr.ht40_tx_pwr[0],r.txpwr.ht40_tx_pwr[1],r.txpwr.ht40_tx_pwr[2],r.txpwr.ht40_tx_pwr[3],r.txpwr.ht40_tx_pwr[4],r.txpwr.ht20_ofdm_tx_pwr_diff,
+            r.channel_plan,r.thermal_meter,r.rf_board_opt,r.rf_feature_opt,r.version,r.customer_id,(unsigned)r.r88eu_rom.vid,(unsigned)r.r88eu_rom.pid,
+            r.r88eu_rom.macaddr[0],r.r88eu_rom.macaddr[1],r.r88eu_rom.macaddr[2],r.r88eu_rom.macaddr[3],r.r88eu_rom.macaddr[4],r.r88eu_rom.macaddr[5]);
+        setProperty("RTWEfuse88E",b);IOLog("[macOS-RTL-WIFI 1.0.20] 8188EU efuse: %s\n",b);
+        ccmpSelfTest();
+    }
+    if(family_==RTW_WIFI_RTL8192EU){
+        /* 1.0.33: the TL-WN821N (2357:0107) sees networks but its AUTH frames are never answered; publish the ROM it runs on. */
+        const struct r92e_rom&r=core_.sc_r92e_rom;char b[300];
+        snprintf(b,sizeof b,"id=%04x xtal=%02x chplan=%02x therm=%02x pa=%02x lna2=%02x board=%02x feat=%02x ant=%02x ver=%02x cust=%02x vid=%04x pid=%04x txchains=%d A:cck=%02x,%02x,%02x,%02x,%02x,%02x ht40=%02x,%02x,%02x,%02x,%02x diff=%02x B:cck=%02x,%02x,%02x,%02x,%02x,%02x ht40=%02x,%02x,%02x,%02x,%02x diff=%02x",
+            (unsigned)r.id,r.xtal_k,r.channel_plan,r.thermal_meter,r.pa_type,r.lna_type_2g,r.rf_board_opt,r.rf_feature_opt,r.rf_antenna_option,r.eeprom_version,r.eeprom_customer_id,(unsigned)r.vid,(unsigned)r.pid,(int)core_.ntxchains,
+            r.txpwr_a.cck_tx_pwr[0],r.txpwr_a.cck_tx_pwr[1],r.txpwr_a.cck_tx_pwr[2],r.txpwr_a.cck_tx_pwr[3],r.txpwr_a.cck_tx_pwr[4],r.txpwr_a.cck_tx_pwr[5],
+            r.txpwr_a.ht40_tx_pwr[0],r.txpwr_a.ht40_tx_pwr[1],r.txpwr_a.ht40_tx_pwr[2],r.txpwr_a.ht40_tx_pwr[3],r.txpwr_a.ht40_tx_pwr[4],r.txpwr_a.ht20_ofdm_tx_pwr_diff,
+            r.txpwr_b.cck_tx_pwr[0],r.txpwr_b.cck_tx_pwr[1],r.txpwr_b.cck_tx_pwr[2],r.txpwr_b.cck_tx_pwr[3],r.txpwr_b.cck_tx_pwr[4],r.txpwr_b.cck_tx_pwr[5],
+            r.txpwr_b.ht40_tx_pwr[0],r.txpwr_b.ht40_tx_pwr[1],r.txpwr_b.ht40_tx_pwr[2],r.txpwr_b.ht40_tx_pwr[3],r.txpwr_b.ht40_tx_pwr[4],r.txpwr_b.ht20_ofdm_tx_pwr_diff);
+        setProperty("RTWEfuse92E",b);IOLog("[macOS-RTL-WIFI 1.0.33] 8192EU efuse: %s\n",b);
+    }
     bool nonzero=false;for(unsigned n=0;n<6;n++)nonzero|=core_.sc_ic.ic_myaddr[n]!=0;
     if(!nonzero||(core_.sc_ic.ic_myaddr[0]&1)||rtwn_io_error(&core_)){reportStartStage("efuse-mac",kIOReturnIOError);return kIOReturnIOError;}
     memcpy(mac_.bytes,core_.sc_ic.ic_myaddr,6);macReady_=true;
@@ -537,7 +640,7 @@ int RTWUSBController::submit(unsigned index,IOUSBHostPipe*pipe,uint32_t length) 
         /* A failed recovery must retain the original transaction error,
          * rather than replacing it with the refill's secondary error. */
         if(index<RXSlots&&rxRecovery_.refilling)rxRecovery_.lastError=result;
-        else if(!transientRXRejection)fault(result);
+        else if(!transientRXRejection)fault(result,3,(uint32_t)index);
         /* A halted pipe can reject io() before accepting a callback. Record
          * that zero-byte result just like an asynchronous RX completion. A
          * prepare() failure never enters this transport recovery path. */
@@ -566,7 +669,7 @@ void RTWUSBController::failRXRecovery(bool exhausted) {
     ++r.failures;if(exhausted)++r.exhausted;
     r.failureStage=r.stage;r.stage=RXRecovery::Failed;r.nextAttemptMS=0;
     r.pending=r.cleared=r.refilling=false;
-    fault(r.originalError);
+    fault(r.originalError,4,0);
     if(attached_&&!stopping_)quiesce(false);
 }
 void RTWUSBController::advanceRXRecovery() {
@@ -678,7 +781,7 @@ void RTWUSBController::drainCompletions(bool process) {
         if(transactionError){
             ++rxErrors_;
             if(!beginRXRecovery(kIOReturnNotResponding)){
-                failure=rxRecoveryFatal=true;fault(kIOReturnNotResponding);
+                failure=rxRecoveryFatal=true;fault(kIOReturnNotResponding,5,0);
             }
         }
     }
@@ -693,7 +796,7 @@ void RTWUSBController::drainCompletions(bool process) {
              * to this recovery; never hide a different coalesced RX fault. */
             if(process&&running_&&rxRecovery_.pending&&!success&&t.result!=kIOReturnAborted&&
                !(t.result==kIOReturnNotResponding&&!t.actual)){
-                ++rxErrors_;failure=true;fault(t.result==kIOReturnSuccess?kIOReturnUnderrun:t.result);
+                ++rxErrors_;failure=true;fault(t.result==kIOReturnSuccess?kIOReturnUnderrun:t.result,6,(uint32_t)t.actual);
             }
             if(process&&running_&&!failure&&!rxRecoveryFatal&&!rxRecovery_.pending&&success&&t.actual){
                 const uint64_t before=rxPackets_;
@@ -703,13 +806,13 @@ void RTWUSBController::drainCompletions(bool process) {
             }
             if(process&&running_&&!rxRecoveryFatal&&!rxRecovery_.pending&&!success&&t.result!=kIOReturnAborted){
                 rxErrors_++;
-                if(t.actual||!beginRXRecovery(t.result)){failure=true;fault(t.result==kIOReturnSuccess?kIOReturnUnderrun:t.result);}
+                if(t.actual||!beginRXRecovery(t.result)){failure=true;fault(t.result==kIOReturnSuccess?kIOReturnUnderrun:t.result,7,(uint32_t)t.actual);}
             }
         }else{
             if(success){txPackets_++;if(stats_)stats_->outputPackets++;core_.sc_tx_timer=0;}
             else if(process&&running_&&t.result!=kIOReturnAborted){
                 txErrors_++;txUSBTransferErrors_++;if(stats_)stats_->outputErrors++;
-                failure=true;fault(t.result==kIOReturnSuccess?kIOReturnUnderrun:t.result);
+                failure=true;fault(t.result==kIOReturnSuccess?kIOReturnUnderrun:t.result,8,(uint32_t)t.actual);
             }
         }
         t.pipe=nullptr;
@@ -717,8 +820,8 @@ void RTWUSBController::drainCompletions(bool process) {
             int error=submit(i,rxPipe_,rtw_usb_rx_capacity(family_));
             if(error==EAGAIN){
                 ++rxErrors_;
-                if(!beginRXRecovery(kIOReturnNotResponding)){failure=true;fault(kIOReturnNotResponding);}
-            }else if(error){failure=true;fault(kIOReturnIOError);}
+                if(!beginRXRecovery(kIOReturnNotResponding)){failure=true;fault(kIOReturnNotResponding,9,0);}
+            }else if(error){failure=true;fault(kIOReturnIOError,10,0);}
         }
         release();
     };
@@ -788,6 +891,7 @@ void RTWUSBController::resetRateControl() {
      * restart can certify an empty previous transport epoch. */
     if(r.requestedSinceReset)rateTransportFresh_=false;
     r.requestedSinceReset=false;r.pendingReports=0;r.active=false;r.seenSequence=false;
+    eapolReportPending_=0;
     dhcpReportPending_=0;/* R24: a new station epoch starts the probe bookkeeping over. */
     r.policy.amrr_min_success_threshold=1;r.policy.amrr_max_success_threshold=15;
     ieee80211_amrr_node_init(&r.policy,&r.node);++r.resets;
@@ -800,6 +904,7 @@ void RTWUSBController::resetRateControl() {
     }
 }
 void RTWUSBController::handleTxReport(const uint8_t*bytes,size_t length) {
+    ++txReportCalls_;txReportLastLen_=length;
     /* R24: log every 88E TX report while a DHCP probe is outstanding.
      * With the lease dead no other host-rate frame requests reports, so
      * each verdict names the firmware's own outcome for the DISCOVER:
@@ -811,10 +916,19 @@ void RTWUSBController::handleTxReport(const uint8_t*bytes,size_t length) {
         rtw_88e_tx_report probe{};
         if(rtw_88e_parse_tx_report(bytes,length,&probe)){
             ++dhcpTxReports_;--dhcpReportPending_;
+            if(probe.packet_ok)++dhcpRepOK_;if(probe.report.retry_over)++dhcpRepRetryOver_;if(probe.report.lifetime_expired)++dhcpRepLifetime_;dhcpRepRetries_+=probe.report.retries;dhcpRepRate_=probe.report.final_rate;
             IOLog("RtWlanUCompat: dhcp TX report: txok=%u retries=%u rate=%u lifetime_over=%u retry_over=%u (pending=%u)\n",
                   (unsigned)probe.packet_ok,(unsigned)probe.report.retries,
                   (unsigned)probe.report.final_rate,(unsigned)probe.report.lifetime_expired,
                   (unsigned)probe.report.retry_over,dhcpReportPending_);
+        }
+    }
+    else if(family_==RTW_WIFI_RTL8188EU&&eapolReportPending_){
+        rtw_88e_tx_report probe{};
+        if(rtw_88e_parse_tx_report(bytes,length,&probe)){
+            --eapolReportPending_;++eapolReports_;
+            if(probe.packet_ok)++eapolRepOK_;if(probe.report.retry_over)++eapolRepRetryOver_;if(probe.report.lifetime_expired)++eapolRepLifetime_;
+            eapolRepRetries_+=probe.report.retries;eapolRepRate_=probe.report.final_rate;
         }
     }
     auto&r=rateControl_;auto*node=core_.sc_ic.ic_bss;
@@ -912,6 +1026,39 @@ void RTWUSBController::publishRateControlDiagnostics() {
     publishDiagnosticCounter("RTWDiagTXDhcpDrops",txDhcpDrops_);
     publishDiagnosticCounter("RTWDiagTXBuilderOtherDrops",txOtherDrops_);
     publishDiagnosticCounter("RTWDiagTXDhcpTxReports",dhcpTxReports_);
+    publishDiagnosticCounter("RTWDiagTXDhcpRepOK",dhcpRepOK_);
+    publishDiagnosticCounter("RTWDiagTXDhcpRepRetryOver",dhcpRepRetryOver_);
+    publishDiagnosticCounter("RTWDiagTXDhcpRepLifetime",dhcpRepLifetime_);
+    publishDiagnosticCounter("RTWDiagTXDhcpRepRetries",dhcpRepRetries_);
+    publishDiagnosticCounter("RTWDiagTXDhcpRepRate",dhcpRepRate_);
+    publishDiagnosticCounter("RTWDiagTXEapolReports",eapolReports_);
+    publishDiagnosticCounter("RTWDiagTXEapolPending",eapolReportPending_);
+    publishDiagnosticCounter("RTWDiagTXEapolRepOK",eapolRepOK_);
+    publishDiagnosticCounter("RTWDiagTXEapolRepRetryOver",eapolRepRetryOver_);
+    publishDiagnosticCounter("RTWDiagTXEapolRepLifetime",eapolRepLifetime_);
+    publishDiagnosticCounter("RTWDiagTXEapolRepRetries",eapolRepRetries_);
+    publishDiagnosticCounter("RTWDiagTXEapolRepRate",eapolRepRate_);
+    for(unsigned i=0;i<txProtHexCount_&&i<3;i++){char key[24];snprintf(key,sizeof key,"RTWDiagTXProtHex%u",i);setProperty(key,txProtHex_[i]);}
+    publishDiagnosticCounter("RTWDiagTXPipe0Frames",txPipeFrames_[0]);
+    publishDiagnosticCounter("RTWDiagTXPipe1Frames",txPipeFrames_[1]);
+    publishDiagnosticCounter("RTWDiagTXMgmtFrames",txMgmtFrames_);
+    publishDiagnosticCounter("RTWDiagTXDataFrames",txDataFrames_);
+    publishDiagnosticCounter("RTWDiagTXEapolSent",txEapolSent_);
+    publishDiagnosticCounter("RTWDiagTXEapolLastPipe",lastEapolPipe_);
+    publishDiagnosticCounter("RTWDiagTXEapolLastQsel",lastEapolQsel_);
+    publishDiagnosticCounter("RTWDiagTXEapolLastRate",lastEapolRate_);
+    publishDiagnosticCounter("RTWDiagTXEapolLastLen",lastEapolLen_);
+    publishDiagnosticCounter("RTWDiagTXEapolLastQoS",lastEapolQos_);
+    publishDiagnosticCounter("RTWDiagTXReportCalls",txReportCalls_);
+    publishDiagnosticCounter("RTWDiagDisableIgnored",disableIgnored_);
+    publishDiagnosticCounter("RTWDiagTXReportLastLen",txReportLastLen_);
+    publishDiagnosticCounter("RTWDiagRXMgmtFrames",rxMgmtFrames_);
+    publishDiagnosticCounter("RTWDiagRXDataFrames",rxDataFrames_);
+    publishDiagnosticCounter("RTWDiagRXDataToUs",rxDataToUs_);
+    publishDiagnosticCounter("RTWDiagRXDataBcast",rxDataBcast_);
+    publishDiagnosticCounter("RTWDiagDhcpEpisodeReplies",episodeReplies_);
+    publishDiagnosticCounter("RTWDiagDhcpEpisodeDiscovers",episodeDiscovers_);
+    publishDiagnosticCounter("RTWDiagDhcpDiscoversTotal",dhcpDiscovers_);
     publishDiagnosticCounter("RTWDiagTXDhcpReportPending",dhcpReportPending_);
     publishDiagnosticCounter("RTWDiagTXDhcpReportMissing",dhcpReportWaits_);
 }
@@ -1106,7 +1253,9 @@ int RTWUSBController::sendFrame(mbuf_t packet,ieee80211_node*node) {
               (htprotection==2&&core_.rate_config.bw40))))protection=1;
         else if(ic.ic_flags&IEEE80211_F_USEPROT)protection=ic.ic_protmode==IEEE80211_PROT_CTSONLY?2:ic.ic_protmode==IEEE80211_PROT_RTSCTS?1:0;
     }
-    bool requestReport=options.data&&!bcastDA&&!eapol&&!legacyFirmware&&
+    /* 1.0.24: ask the 8188EU firmware for a verdict on unicast EAPOL (handshake M2): unlike broadcast DHCP it needs an ACK, so retry_over proves whether the AP hears us. */
+    const bool eapolProbe=eapol&&family_==RTW_WIFI_RTL8188EU&&!firmware&&options.data&&!bcastDA;
+    bool requestReport=options.data&&!bcastDA&&(!eapol||eapolProbe)&&!legacyFirmware&&
         /* 88E firmware-rate packets clear USE_RATE; the 88E CCX report
          * request is only valid on host-selected rates. */
         !(family_==RTW_WIFI_RTL8188EU&&firmware)&&authorized()&&ic.ic_state==IEEE80211_S_RUN&&
@@ -1169,17 +1318,31 @@ int RTWUSBController::sendFrame(mbuf_t packet,ieee80211_node*node) {
         if(requestReport&&!rtw_92c_tx_report_request(family_==RTW_WIFI_RTL8188EU,1,bytes)){
             txDrop(19,"report-request-skipped");
             rtw_92c_tx_report_request(family_==RTW_WIFI_RTL8188EU,0,bytes);
+        }else if(!requestReport&&family_==RTW_WIFI_RTL8188EU){
+            /* 1.0.27: on the 88E, DW1 bit6 is not AGG_BREAK (that is DW2 bit16). Every non-report data frame left it set, so the chip saw an invalid MACID 64. Pass-through call moves the bit. */
+            rtw_92c_tx_report_request(1,0,bytes);
         }
         descriptorOK=true;
     }
     if(!descriptorOK||mbuf_copydata(packet,0,length,bytes+descriptorLength)){mbuf_freem(packet);txDrop(17,descriptorOK?"copydata-failed":"descriptor-build");return EINVAL;}
     mbuf_freem(packet);
+    if(family_==RTW_WIFI_RTL8188EU&&(header.i_fc[1]&IEEE80211_FC1_PROTECTED)&&!eapol&&txProtHexCount_<3){
+        char*h=txProtHex_[txProtHexCount_];size_t o=0;
+        const size_t dl=descriptorLength<32?descriptorLength:32,fl=length<48?length:48;
+        for(size_t i=0;i<dl&&o+3<sizeof(txProtHex_[0]);i++)o+=snprintf(h+o,sizeof(txProtHex_[0])-o,"%02x",bytes[i]);
+        if(o+2<sizeof(txProtHex_[0])){h[o++]='|';h[o]=0;}
+        for(size_t i=0;i<fl&&o+3<sizeof(txProtHex_[0]);i++)o+=snprintf(h+o,sizeof(txProtHex_[0])-o,"%02x",bytes[descriptorLength+i]);
+        ++txProtHexCount_;
+    }
     int error=submit(index,txPipes_[pipeIndex],(uint32_t)total);
     if(!error){
         /* R24: the DHCP probe report is consumed by the probe logger only;
          * it must never count as an AMRR sample (broadcast has no ACK, so
          * txok=0 would falsely degrade the station's rate). */
-        if(requestReport&&!dhcpTx){++rateControl_.requests;++rateControl_.pendingReports;rateControl_.requestedSinceReset=true;}
+        if(eapolProbe&&requestReport)++eapolReportPending_;
+        ++txPipeFrames_[pipeIndex&3U];if(data)++txDataFrames_;else ++txMgmtFrames_;
+        if(eapol){++txEapolSent_;lastEapolPipe_=pipeIndex;lastEapolQsel_=options.qsel;lastEapolRate_=options.rate;lastEapolLen_=length;lastEapolQos_=qos?1:0;}
+        if(requestReport&&!dhcpTx&&!eapolProbe){++rateControl_.requests;++rateControl_.pendingReports;rateControl_.requestedSinceReset=true;}
         if(firmware||(acFirmware&&acRateConfig_.ht))++txHTPackets_;
         if(options.ampdu){++txAMPDUPackets_;auto&ba=node->ni_tx_ba[tid];if(ba.ba_timeout_val)timeout_add_usec(&ba.ba_to,ba.ba_timeout_val);}
         ieee80211_release_node(&ic,node);
@@ -1249,6 +1412,12 @@ void RTWUSBController::receive(const uint8_t*bytes,size_t length) {
         if((p.mpdu[0]&IEEE80211_FC0_TYPE_MASK)==IEEE80211_FC0_TYPE_CTL)++rxBARPackets_;
         observeReceivedRate(p);
         if(p.mpdu[1]&IEEE80211_FC1_PROTECTED)++rxDiag_.protectedMPDUs;
+        if((p.mpdu[0]&IEEE80211_FC0_TYPE_MASK)==IEEE80211_FC0_TYPE_MGT)++rxMgmtFrames_;
+        else if((p.mpdu[0]&IEEE80211_FC0_TYPE_MASK)==IEEE80211_FC0_TYPE_DATA&&p.mpdu_length>=24){
+            ++rxDataFrames_;
+            if(!memcmp(p.mpdu+4,core_.sc_ic.ic_myaddr,6))++rxDataToUs_;
+            else if(p.mpdu[4]==0xff&&p.mpdu[5]==0xff&&p.mpdu[6]==0xff&&p.mpdu[7]==0xff&&p.mpdu[8]==0xff&&p.mpdu[9]==0xff)++rxDataBcast_;
+        }
         /* Beacons establish RF freshness throughout WPA2 key exchange, before
          * net80211 opens the controlled port for Ethernet traffic. */
         if(present_&&joinRequested_&&core_.sc_ic.ic_state==IEEE80211_S_RUN&&
@@ -1527,6 +1696,9 @@ void RTWUSBController::cancelWpaRecovery() {
 }
 void RTWUSBController::wpaStateChanged(ieee80211_state previous) {
     auto&r=wpaRecovery_;const auto&ic=core_.sc_ic;
+    /* 1.0.7: a spent budget never re-arms itself - a fresh join request
+     * (RTW_CONTROL_JOIN) clears wpaStandDown_ and buys a new one. */
+    if(wpaStandDown_)return;
     if(!joinRequested_||!ic.ic_des_esslen||
        (ic.ic_flags&(IEEE80211_F_RSNON|IEEE80211_F_PSK))!=(IEEE80211_F_RSNON|IEEE80211_F_PSK)){
         cancelWpaRecovery();return;
@@ -1537,7 +1709,7 @@ void RTWUSBController::wpaStateChanged(ieee80211_state previous) {
      * WPA2 exchange, independently of beacons and status polling. */
     if(!r.active){r.retries=0;r.error=0;}
     else if(r.state!=WPARecoverySearching)return;
-    r.active=true;r.state=WPARecoveryHandshake;r.remainingMS=15000;r.lastMS=nowMS();
+    r.active=true;r.state=WPARecoveryHandshake;r.remainingMS=family_==RTW_WIFI_RTL8188EU?30000:15000;r.lastMS=nowMS(); /* 1.0.22: 8188EU field logs show associations dropped by this 15 s watchdog before the 4-way handshake finished */
 }
 void RTWUSBController::advanceWpaRecovery() {
     auto&r=wpaRecovery_;auto&ic=core_.sc_ic;
@@ -1565,9 +1737,25 @@ void RTWUSBController::advanceWpaRecovery() {
     core_.sc_tx_timer=0;
     (void)stateTransition(&ic,IEEE80211_S_INIT,-1);
     if(r.retries==3){
-        r.active=false;r.state=WPARecoveryFailed;r.error=ETIMEDOUT;r.remainingMS=0;
-        if(scanTimer_)scanTimer_->cancelTimeout();
-        if(calibTimer_)calibTimer_->cancelTimeout();
+        /* 1.0.7 field fix (RTLWiFiBar.log 2026-11-18: both joins accepted,
+         * no link, silence until the app quit): 1.0.6 latched
+         * WPARecoveryFailed here, cancelled the scan and calibration
+         * timers and left the state machine frozen - the state gate then
+         * rejected EVERY later auth/assoc/run until the kext reloaded.
+         * A spent handshake budget must never brick the station. Stand
+         * down instead: release the WPA state, keep the timers running,
+         * return the station to its normal scan cycle, and wait for the
+         * user's next join request (which clears wpaStandDown_ and buys
+         * a fresh four-window budget). No teardown loop either: while
+         * standing down a RUN never re-arms the recovery (see
+         * wpaStateChanged). */
+        IOLog("RtWlanUCompat: WPA handshake failed %u times on %s - standing "
+              "down; scans continue, pick the network again to retry\n",
+              (unsigned)r.retries+1,
+              ic.ic_des_esslen?(const char*)ic.ic_des_essid:"?");
+        wpaStandDown_=true;
+        r.active=false;r.state=WPARecoveryIdle;r.error=ETIMEDOUT;r.remainingMS=0;
+        (void)stateTransition(&ic,IEEE80211_S_SCAN,-1);
         return;
     }
     r.retries++;r.state=WPARecoverySearching;r.remainingMS=15000;r.lastMS=now;
@@ -1769,6 +1957,31 @@ void RTWUSBController::eraseProfile() {
 }
 void RTWUSBController::quiesce(bool erase) {
     if(stopping_)return;
+    /* 1.0.9 field fix (RTLWiFiBar.log 2026-11-18 07:42+07:54, driver 1.0.8:
+     * "it not reconnect after another reboot even if I try Forget network
+     * and change the USB Port"). Every teardown used to leave the AP with
+     * a ghost association: the stop path transitioned INIT with arg -1,
+     * and this port's net80211 treats -1 as "send no management frame" -
+     * and by the time that transition ran, the stopping_/running_ TX gates
+     * were closed anyway. The AP keeps such a ghost entry for its idle
+     * timeout (minutes); the next AUTH from this same MAC after a reboot
+     * is then simply ignored and net80211 cycles SCAN->AUTH forever -
+     * exactly the field shape (join progress 1 -> 2 -> 1 -> 2, never 3;
+     * Forget and a USB port change cannot fix the AP's table). Say goodbye
+     * BEFORE any teardown: the CORE newstate INIT transition emits
+     * DISASSOC (from RUN) or DEAUTH (from AUTH/ASSOC) through the same
+     * mgmt path every join uses, with the chip still alive and stopping_
+     * still false so the output gates pass. Must carry a real reason arg,
+     * never -1. Best effort: a chip that is already USB-dead just fails
+     * the TX and the teardown proceeds regardless. */
+    if(attached_&&present_&&!sleeping_&&running_&&
+       usbError_==kIOReturnSuccess&&!core_.core_error&&
+       core_.sc_newstate&&core_.sc_ic.ic_bss){
+        const int st=core_.sc_ic.ic_state;
+        if(st==IEEE80211_S_RUN||st==IEEE80211_S_ASSOC||st==IEEE80211_S_AUTH)
+            (void)core_.sc_newstate(&core_.sc_ic,IEEE80211_S_INIT,
+                IEEE80211_REASON_ASSOC_LEAVE);
+    }
     stopping_=true;radioReady_=false;enabled_=false;lastBeaconMs_=0;
     rtw_signal_reset(&signal_);
     cancelWpaRecovery();
@@ -1792,12 +2005,48 @@ void RTWUSBController::quiesce(bool erase) {
     core_.sc_ic.ic_if.if_link_state=LINK_STATE_DOWN;
 }
 IOReturn RTWUSBController::enableStation() {
-    if(!attached_||!present_||sleeping_||usbError_!=kIOReturnSuccess||core_.core_error||!netif_||!stats_)return kIOReturnNotReady;
+    if(!attached_||!present_||sleeping_||usbError_!=kIOReturnSuccess||core_.core_error||!netif_||!stats_){
+        /* 1.0.6 reboot-2 wedge cure: after the first failed bring-up the
+         * transport fault is latched, so every later bring-up attempt exits
+         * HERE and the failure ladder never reaches its 4th count - in the
+         * field the software re-plug never fired at all. A latched
+         * usbError_/core_error before the first successful bring-up (and
+         * after at least one real attempt reached the chip) is the wedge
+         * signature; count it so the ladder and the boot rescue can fire. */
+        if(bootRescueArmed_&&!sleeping_&&bringUpAttempts_&&!bringUpEverSucceeded_&&
+           (usbError_!=kIOReturnSuccess||core_.core_error)){
+            ++wedgedBringUps_;
+            scheduleSoftwareReplug("transport fault latched before first bring-up");
+        }
+        return kIOReturnNotReady;
+    }
+    ++bringUpAttempts_;
     if(enabled_&&running_)return kIOReturnSuccess;
     core_.sc_ic.ic_if.if_flags|=IFF_UP;
     int result=is8723Family()?start8723():is8710BUFamily()?start8710BU():is8192FUFamily()?start8192FU():family_==RTW_WIFI_RTL8192DU?start8192DU():is88Family()?start88():is8812Family()?start8812():family_==RTW_WIFI_RTL8814AU?start8814():rtwn_init(&core_.sc_ic.ic_if);
-    if(result){quiesce(false);return fromErrno(result);}
-    enabled_=radioReady_=true;
+    /* 1.0.43: any bring-up (first scan, join, rescan) can time out inside
+     * start88 on the 8821CU (RTWDiagStart88FailStage=2, Sub=9 = firmware
+     * download, ETIMEDOUT) and latch core_error + firmware.last_error, after
+     * which every call answers NotReady until the dongle is moved. The chip
+     * is fine: power it down (start88 already did), clear the latches and
+     * try again up to 3 times, 300 ms apart. */
+    if(result&&(family_==RTW_WIFI_RTL8821CU||family_==RTW_WIFI_RTL8821AU||family_==RTW_WIFI_RTL8812AU)){
+        for(unsigned retry=0;retry<3&&result&&!ioError(this)&&usbError_==kIOReturnSuccess&&!stopping_&&!closing_&&!sleeping_;++retry){
+            IOSleep(300);
+            core_.core_error=0;
+            r88Core_.firmware.last_error=0;
+            ++joinBringUpRetries_;
+            core_.sc_ic.ic_if.if_flags|=IFF_UP;
+            result=is8812Family()?start8812():start88();
+        }
+        publishDiagnosticCounter("RTWDiagJoinBringUpRetries",joinBringUpRetries_);
+    }
+    if(result){quiesce(false);/* 1.0.5/1.0.6: persistent bring-up failure with the
+        station never up is the boot-wedge signature; count it and let the
+        software re-plug decide. */
+        if(!bringUpEverSucceeded_){wedgedBringUps_++;scheduleSoftwareReplug("chip bring-up");}
+        return fromErrno(result);}
+    enabled_=radioReady_=true;wedgedBringUps_=0;bringUpEverSucceeded_=true;
     /* Sequence completion is not a claim that the physical radio has been
      * validated; the stable register-result chain mask remains observable. */
     setProperty("IQCalibrationMask",(unsigned long long)core_.iq_calibration_mask,8);
@@ -1858,6 +2107,17 @@ void RTWUSBController::publishDiagnostics() {
      * this device's snapshot; registry readers still need bracketing reads
      * before claiming an atomic snapshot. All writers run under our gate. */
     publish("RTWDiagPublicationGeneration",++diagnosticPublicationGeneration_);
+    publish("RTWDiagCoreError",(uint32_t)core_.core_error);
+    if(r88StartFails_){publish("RTWDiagStart88FailStage",r88StartFailStage_);publish("RTWDiagStart88FailErr",r88StartFailErr_);publish("RTWDiagStart88Fails",r88StartFails_);publish("RTWDiagStart88FailSub",r88StartFailSub_);publish("RTWDiagStart88FailDetail",r88StartFailDetail_);}
+    if(coexErr_){
+        publish("RTWDiagCoexErr",coexErr_);publish("RTWDiagCoexErrSite",coexErrSiteLatched_);
+        publish("RTWDiagCoexErrAfterAttachMS",coexErrAfterAttachMS_);publish("RTWDiagCoexTickErrors",coexTickErrors_);
+    }
+    if(faultCode_){
+        publish("RTWDiagFaultCode",faultCode_);publish("RTWDiagFaultSite",faultSite_);
+        publish("RTWDiagFaultDetail",faultDetail_);publish("RTWDiagFaultAfterAttachMS",faultAfterAttachMS_);
+        publish("RTWDiagFaultIcState",faultIcState_);publish("RTWDiagFaultRunning",faultRunning_);
+    }
     publishRateControlDiagnostics();
     /* No backend currently caches a complete, association-fresh effective
      * TX PHY tuple (rate, bandwidth and GI). Negotiated capability and RX MCS
@@ -2074,6 +2334,71 @@ static size_t printableSsidLen(const uint8_t* p,size_t n) {
     while(len<n&&p[len]>=0x20&&p[len]<=0x7e)++len;
     return len;
 }
+/* 1.0.15: the association tail of every JOIN - teardown, RX unstick,
+ * profile seeding and station start. Behavior-identical to the original
+ * inline block; kept as a method for one source of truth. */
+IOReturn RTWUSBController::executeJoinTail(const RTWControlJoin *join) {
+    /* 1.0.31: remember the target's channel from the live survey BEFORE the
+     * quiesce below empties the node tree (strongest signal wins). */
+    unsigned hintChannel=0;int hintRssi=-100000;unsigned alt24=0;int alt24Rssi=-1;
+    {
+        unsigned visited=0;
+        for(ieee80211_node*hn=RB_MIN(ieee80211_tree,&core_.sc_ic.ic_tree);hn&&visited++<1024;hn=RB_NEXT(ieee80211_tree,&core_.sc_ic.ic_tree,hn)){
+            if(hn->ni_esslen!=join->ssidLength||!hn->ni_esslen||memcmp(hn->ni_essid,join->ssid,hn->ni_esslen))continue;
+            if(!hn->ni_chan||hn->ni_chan==IEEE80211_CHAN_ANYC)continue;
+            const unsigned c=(unsigned)ieee80211_chan2ieee(&core_.sc_ic,hn->ni_chan);
+            {int score=(int)hn->ni_rssi-((core_.sc_ic.ic_bad_valid&&!memcmp(hn->ni_bssid,core_.sc_ic.ic_bad_bssid,6))?1000:0);if(c>=1&&c<255&&score>hintRssi){hintRssi=score;hintChannel=c;}
+            if(c>=1&&c<255&&IEEE80211_IS_CHAN_2GHZ(hn->ni_chan)&&(int)hn->ni_rssi>alt24Rssi){alt24Rssi=(int)hn->ni_rssi;alt24=c;}}
+        }
+    }
+    /* a re-submit after a failed join sees only the one channel that was scanned, so keep the earlier 2.4 GHz choice */
+    if(alt24)core_.sc_ic.ic_join_alt24=(uint8_t)alt24;
+    if(core_.sc_ic.ic_avoid5&&core_.sc_ic.ic_join_alt24)hintChannel=core_.sc_ic.ic_join_alt24;
+    setProperty("RTWDiagJoinHintChannel",(unsigned long long)hintChannel,32);
+    setProperty("RTWDiagJoinAlt24Channel",(unsigned long long)alt24,32);
+    const uint64_t tailStartMS=nowMS();
+    for(auto&v:joinStateMS_)v=0;
+    quiesce(true);
+    setProperty("RTWDiagJoinQuiesceMS",(unsigned long long)(nowMS()-tailStartMS),64);
+    /* 1.0.11: a re-join that lands after an off/on window inherits a
+     * halted USB RX pipe; the fresh association then sees no beacons
+     * and no EAPOL and dies quietly. Clear the halt before the station
+     * restarts. */
+    if(rxPipe_&&!rxRecovery_.pending){
+        IOReturn unstuck=rxPipe_->clearStall(true);
+        IOLog("RtWlanUCompat: fresh re-join RX pipe unstick -> 0x%08x\n",(unsigned)unstuck);
+    }
+    /* A zero PMK is the compat layer's encoding of an open/none association
+     * (PBKDF2 output is never all-zero); an open join must actively DISARM
+     * RSN so no stale WPA config survives. */
+    bool openJoin=true;
+    for(unsigned i=0;i<sizeof(join->pmk);++i)if(join->pmk[i]){openJoin=false;break;}
+    if(openJoin){
+        ieee80211_wpaparams off{};off.i_enabled=0;
+        int error=ieee80211_ioctl_setwpaparms(&core_.sc_ic,&off);
+        if(error&&error!=ENETRESET)return fromErrno(error);
+        memset(core_.sc_ic.ic_psk,0,sizeof(core_.sc_ic.ic_psk));
+        core_.sc_ic.ic_flags&=~IEEE80211_F_PSK;
+    }else{
+        ieee80211_wpaparams parameters{};parameters.i_enabled=1;parameters.i_protos=IEEE80211_WPA_PROTO_WPA2;parameters.i_akms=IEEE80211_WPA_AKM_PSK;parameters.i_ciphers=IEEE80211_WPA_CIPHER_CCMP;parameters.i_groupcipher=IEEE80211_WPA_CIPHER_CCMP;
+        int error=ieee80211_ioctl_setwpaparms(&core_.sc_ic,&parameters);
+        if(error&&error!=ENETRESET)return fromErrno(error);
+        memcpy(core_.sc_ic.ic_psk,join->pmk,32);core_.sc_ic.ic_flags|=IEEE80211_F_PSK;
+    }
+    core_.sc_ic.ic_des_esslen=join->ssidLength;memcpy(core_.sc_ic.ic_des_essid,join->ssid,join->ssidLength);
+    if(!joinRequested_)firstJoinRequestedMS_=nowMS();
+    joinRequested_=true;
+    lastJoinRequestedMS_=nowMS();
+    wpaStandDown_=false;
+    core_.sc_ic.ic_join_chan_hint=(uint8_t)hintChannel;
+    const uint64_t enableStartMS=nowMS();
+    IOReturn result=enableStation();
+    setProperty("RTWDiagJoinEnableMS",(unsigned long long)(nowMS()-enableStartMS),64);if(result!=kIOReturnSuccess)quiesce(true);return result;
+}
+/* 1.0.16: the 1.0.15 cold-attach gate (considerColdGate + held-join
+ * deferral) is REMOVED - it deadlocked with the app's scan suppression
+ * (a held join suppressed the very sweeps the gate itself waited for) and
+ * broke ultra-compatible dongles into endless scanning. */
 IOReturn RTWUSBController::handleControl(ControlCall*call) {
     if(!call||rtw_control_validate_request(call->selector,call->input,call->length)!=RTW_CONTROL_VALID||!call->outputLength||!call->output||*call->outputLength<rtw_control_output_size(call->selector))return kIOReturnBadArgument;
     size_t size=rtw_control_output_size(call->selector);bzero(call->output,size);*call->outputLength=size;
@@ -2082,9 +2407,17 @@ IOReturn RTWUSBController::handleControl(ControlCall*call) {
     if(call->selector==RTW_CONTROL_CHANNEL_MAP){channelMap(static_cast<RTWControlChannelMap*>(call->output));return kIOReturnSuccess;}
     auto*reply=static_cast<RTWControlReply*>(call->output);reply->version=RTW_CONTROL_VERSION;
     if(call->selector==RTW_CONTROL_LEAVE){quiesce(true);return kIOReturnSuccess;}
-    if(!attached_||!present_||sleeping_||usbError_!=kIOReturnSuccess||core_.core_error)return kIOReturnNotReady;
+    if(!attached_||!present_||sleeping_||usbError_!=kIOReturnSuccess||core_.core_error){
+        considerSessionRescue();/* 1.0.9: a transport latched dead re-plugs itself */
+        return kIOReturnNotReady;
+    }
     if(call->selector==RTW_CONTROL_JOIN){
         const auto*join=static_cast<const RTWControlJoin*>(call->input);
+        /* 1.0.15 shipped a cold-attach gate here that HELD the first join
+         * until two sweeps were served; rolled back in 1.0.16 - it deadlocked
+         * with the app's own "no scans while a join is in flight" rule (the
+         * held join suppressed the very scans the gate was waiting for) and
+         * left ultra-compatible dongles scanning forever. */
         /* Build 1.0.8: an idempotent re-join must not tear down a healthy
          * link. The utility re-sends the whole profile (its watchdog, a
          * saved-profile refresh, a second click); quiesce() below stopped
@@ -2144,41 +2477,7 @@ IOReturn RTWUSBController::handleControl(ControlCall*call) {
                 if(!beaconsFresh)IOLog("RtWlanUCompat: zombie RUN on %s - rebuilding link\n",name);
             }
         }
-        quiesce(true);
-        /* 1.0.11: a re-join that lands after an off/on window inherits a
-         * halted USB RX pipe; the fresh association then sees no beacons
-         * and no EAPOL and dies quietly. Clear the halt before the station
-         * restarts. */
-        if(rxPipe_&&!rxRecovery_.pending){
-            IOReturn unstuck=rxPipe_->clearStall(true);
-            IOLog("RtWlanUCompat: fresh re-join RX pipe unstick -> 0x%08x\n",(unsigned)unstuck);
-        }
-        /* A zero PMK is the compat layer's encoding of an open/none
-         * association (PBKDF2 output is never all-zero, so a real WPA
-         * join can never collide with it). Field round 6 showed the
-         * open path dead: arming RSN unconditionally makes net80211
-         * skip every AP without RSN IEs during the join, so the station
-         * stayed in S_SCAN forever and the utility kept re-associating.
-         * An open join must actively DISARM RSN - a stale config from a
-         * previous WPA join would otherwise survive until reboot. */
-        bool openJoin=true;
-        for(unsigned i=0;i<sizeof(join->pmk);++i)if(join->pmk[i]){openJoin=false;break;}
-        if(openJoin){
-            ieee80211_wpaparams off{};off.i_enabled=0;
-            int error=ieee80211_ioctl_setwpaparms(&core_.sc_ic,&off);
-            /* ENETRESET is the acknowledged "config changed, reset the
-             * station" answer - enableStation() below performs it. */
-            if(error&&error!=ENETRESET)return fromErrno(error);
-            memset(core_.sc_ic.ic_psk,0,sizeof(core_.sc_ic.ic_psk));
-            core_.sc_ic.ic_flags&=~IEEE80211_F_PSK;
-        }else{
-            ieee80211_wpaparams parameters{};parameters.i_enabled=1;parameters.i_protos=IEEE80211_WPA_PROTO_WPA2;parameters.i_akms=IEEE80211_WPA_AKM_PSK;parameters.i_ciphers=IEEE80211_WPA_CIPHER_CCMP;parameters.i_groupcipher=IEEE80211_WPA_CIPHER_CCMP;
-            int error=ieee80211_ioctl_setwpaparms(&core_.sc_ic,&parameters);
-            if(error&&error!=ENETRESET)return fromErrno(error);
-            memcpy(core_.sc_ic.ic_psk,join->pmk,32);core_.sc_ic.ic_flags|=IEEE80211_F_PSK;
-        }
-        core_.sc_ic.ic_des_esslen=join->ssidLength;memcpy(core_.sc_ic.ic_des_essid,join->ssid,join->ssidLength);joinRequested_=true;
-        IOReturn result=enableStation();if(result!=kIOReturnSuccess)quiesce(true);return result;
+        return executeJoinTail(join);
     }
     if(call->selector==RTW_CONTROL_SCAN){
         if(rxRecovery_.pending)return kIOReturnBusy;
@@ -2191,6 +2490,27 @@ IOReturn RTWUSBController::handleControl(ControlCall*call) {
          * cached survey instead of sweeping; the radio only leaves the AP
          * when the association is already gone. */
         if(core_.sc_ic.ic_state==IEEE80211_S_RUN)return kIOReturnSuccess;
+        /* 1.0.8 (field log 2026-11-18 07:03-07:05, driver 1.0.7 + app
+         * 8.7.13): a scan trigger while a join request is still working
+         * runs ieee80211_begin_scan below and restarts the whole STA
+         * sweep, erasing any AUTH/ASSOC progress - the app's own rescan
+         * landed 4 ms and 0.8 s after the join submit and the association
+         * never converged ("join submit -> ok", then nothing, forever).
+         * While a join is inside its working window, answer success and
+         * serve the cached survey exactly like the RUN case: the join's
+         * own site survey keeps the node tree current. A genuinely dead
+         * join is retired by the app's bounded monitor, and scans flow
+         * again once the 60 s window passes or a fresh join re-anchors
+         * the clock. One line per boot marks guarded triggers. */
+        if(joinRequested_&&lastJoinRequestedMS_&&
+           nowMS()-lastJoinRequestedMS_<60000u){
+            static bool scanGuardLogged=false;
+            if(!scanGuardLogged){
+                scanGuardLogged=true;
+                IOLog("[macOS-RTL-WIFI 1.0.16] scan trigger %llu ms into a live join - cached survey served, the join owns the radio\n",
+                    (unsigned long long)(nowMS()-lastJoinRequestedMS_));}
+            return kIOReturnSuccess;
+        }
         if(!running_)return enableStation();
         ieee80211_begin_scan(&core_.sc_ic.ic_if);
         return rtwn_io_error(&core_)?kIOReturnIOError:kIOReturnSuccess;
@@ -2208,8 +2528,31 @@ IOReturn RTWUSBController::gated(OSObject*object,void*operation,void*a,void*,voi
     case Initialize:return s->initializePlatform();
     case Shutdown:s->shutdownPlatform();return kIOReturnSuccess;
     case TeardownReady:s->teardownReady_=true;s->scheduleDeferredCleanup();return kIOReturnSuccess;
+    case SoftwareReplug:{
+        /* Runs under the gate only to validate state and capture the device
+         * provider; reset() itself must stay off-gate because it synchronously
+         * terminates the device (and us with it - closeUSBProvider's reentry
+         * rule). */
+        auto*out=static_cast<IOUSBHostDevice**>(a);
+        s->reenumQueued_=false;
+        if(out)*out=nullptr;
+        /* 1.0.6: normally only a never-started station qualifies (!running_),
+         * but the boot rescue may also fire while the station runs as a
+         * zombie - up, never authorized, inside the boot-rescue window. */
+        bool rescueLive=s->bootRescueArmed_&&!s->bootEverAuthorized_;
+        /* 1.0.9: a session transport fault (sessionFaultSinceMS_) also
+         * qualifies even while the station bookkeeping still says running_. */
+        if(out&&s->present_&&!s->stopping_&&!s->closing_&&s->usb_&&s->usb_->getDevice()&&
+           (!s->running_||rescueLive||s->sessionFaultSinceMS_))
+            if(auto*dev=OSDynamicCast(IOUSBHostDevice,s->usb_->getDevice())){dev->retain();*out=dev;}
+        return kIOReturnSuccess;
+    }
     case Enable:return s->enableStation();
-    case Disable:s->quiesce(true);return kIOReturnSuccess;
+    case Disable:
+        /* 1.0.28: opening System Settings > Network makes macOS disable/enable the interface. A full quiesce tore down a working link (LED blink, app 'ready, not connected', Forget needed). While associated and awake, ignore it; enable() is a no-op when already running. */
+        /* 1.1.1: also ignore it while a join is still in progress (scan/auth/assoc/4-way): opening System Settings right after connecting reached quiesce(true) and dropped the link. */
+        if(s->attached_&&s->enabled_&&s->running_&&!s->sleeping_&&(s->core_.sc_ic.ic_state==IEEE80211_S_RUN||s->joinRequested_)){++s->disableIgnored_;return kIOReturnSuccess;}
+        s->quiesce(true);return kIOReturnSuccess;
     case Output:{
         auto*call=static_cast<OutputCall*>(a);mbuf_t packet=call->packet;
         call->consumed=true;
@@ -2253,7 +2596,7 @@ IOReturn RTWUSBController::gated(OSObject*object,void*operation,void*a,void*,voi
         // Reject new work before quiescing; stop() may follow synchronously
         // when our provider is closed by the termination notification.
         s->closing_=true;s->present_=false;
-        s->fault(kIOReturnNoDevice);s->quiesce(true);
+        s->fault(kIOReturnNoDevice,11,0);s->quiesce(true);
         return kIOReturnSuccess;
     case Sleep:s->quiesce(true);s->sleeping_=true;return kIOReturnSuccess;
     case Wake:s->sleeping_=false;/* The app restores a saved profile from the user's keychain. */return kIOReturnSuccess;
@@ -2330,7 +2673,7 @@ void RTWUSBController::reportStartStage(const char *stage, IOReturn result) {
         provider->setProperty("RTWStartStage",stage);
         provider->setProperty("RTWStartResult",(unsigned long long)(uint32_t)result,32);
     }
-    IOLog("[macOS-RTL-WIFI 1.0.3] start stage=%s result=0x%08x\n",stage,(unsigned)result);
+    IOLog("[macOS-RTL-WIFI 1.0.16] start stage=%s result=0x%08x\n",stage,(unsigned)result);
 }
 bool RTWUSBController::start(IOService*provider) {
     IOLog("RtWlanUCompat: compat shim build R28-monterey-vtable (2026-11-11) active, Darwin %d.%d\n",version_major,version_minor);
@@ -2341,14 +2684,16 @@ bool RTWUSBController::start(IOService*provider) {
     // The priority-only allocator is exported by the private KPI on macOS 26.
     // The public Mach allocator preserves the same priority and zero options.
     cleanupCall_=thread_call_allocate_with_options(deferredCleanup,this,THREAD_CALL_PRIORITY_KERNEL,0);
-    if(!lifecycleLock_||!loop_||!completionLock_||!cleanupCall_){reportStartStage("locks-workloop",kIOReturnNoMemory);releasePlatform();return false;}
+    reenumCall_=thread_call_allocate_with_options(reenumerateCall,this,THREAD_CALL_PRIORITY_KERNEL,0);
+    if(!lifecycleLock_||!loop_||!completionLock_||!cleanupCall_||!reenumCall_){reportStartStage("locks-workloop",kIOReturnNoMemory);releasePlatform();return false;}
     if(!super::start(provider)){reportStartStage("network-super-start",kIOReturnError);releasePlatform();return false;}
     usb_=OSDynamicCast(IOUSBHostInterface,provider);
     if(!usb_||!usb_->open(this)){reportStartStage("usb-open",kIOReturnNotOpen);releasePlatform();super::stop(provider);markTeardownReady();return false;}
     usbOpened_=present_=true;
     gate_=IOCommandGate::commandGate(this);completionEvent_=IOInterruptEventSource::interruptEventSource(this,completionAction);
     scanTimer_=IOTimerEventSource::timerEventSource(this,scanAction);calibTimer_=IOTimerEventSource::timerEventSource(this,calibAction);watchdogTimer_=IOTimerEventSource::timerEventSource(this,watchdogAction);
-    if(!gate_||!completionEvent_||!scanTimer_||!calibTimer_||!watchdogTimer_||loop_->addEventSource(gate_)!=kIOReturnSuccess||loop_->addEventSource(completionEvent_)!=kIOReturnSuccess||loop_->addEventSource(scanTimer_)!=kIOReturnSuccess||loop_->addEventSource(calibTimer_)!=kIOReturnSuccess||loop_->addEventSource(watchdogTimer_)!=kIOReturnSuccess){reportStartStage("event-sources",kIOReturnNoResources);releasePlatform();super::stop(provider);markTeardownReady();return false;}
+    rescueTimer_=IOTimerEventSource::timerEventSource(this,bootRescueTick);
+    if(!gate_||!completionEvent_||!scanTimer_||!calibTimer_||!watchdogTimer_||!rescueTimer_||loop_->addEventSource(gate_)!=kIOReturnSuccess||loop_->addEventSource(completionEvent_)!=kIOReturnSuccess||loop_->addEventSource(scanTimer_)!=kIOReturnSuccess||loop_->addEventSource(calibTimer_)!=kIOReturnSuccess||loop_->addEventSource(watchdogTimer_)!=kIOReturnSuccess||loop_->addEventSource(rescueTimer_)!=kIOReturnSuccess){reportStartStage("event-sources",kIOReturnNoResources);releasePlatform();super::stop(provider);markTeardownReady();return false;}
     completionEvent_->enable();rtw_transfer_reset(&ledger_);
     if(!taskq_is_initialized(systq)){reportStartStage("taskqueue",kIOReturnNoResources);gate_->runAction(gated,(void*)Shutdown);releasePlatform();super::stop(provider);markTeardownReady();return false;}
     if(gate_->runAction(gated,(void*)Initialize)!=kIOReturnSuccess){gate_->runAction(gated,(void*)Shutdown);releasePlatform();super::stop(provider);markTeardownReady();return false;}
@@ -2362,7 +2707,13 @@ bool RTWUSBController::start(IOService*provider) {
     static IOPMPowerState states[2]{};states[0].version=1;states[1].version=1;states[1].capabilityFlags=kIOPMPowerOn|kIOPMDeviceUsable;states[1].inputPowerRequirement=kIOPMPowerOn;states[1].outputPowerCharacter=kIOPMPowerOn;
     PMinit();powerManaged_=true;provider->joinPMtree(this);
     if(registerPowerDriver(this,states,2)!=kIOReturnSuccess){reportStartStage("power-register",kIOReturnError);PMstop();powerManaged_=false;gate_->runAction(gated,(void*)Shutdown);releasePlatform();super::stop(provider);markTeardownReady();return false;}
-    super::setLinkStatus(kIONetworkLinkValid);reportStartStage("ready");registerService();netif_->registerService();return true;
+    super::setLinkStatus(kIONetworkLinkValid);reportStartStage("ready");registerService();netif_->registerService();
+    /* 1.0.6 boot rescue: from here the attach has 12 minutes to prove
+     * itself. The first tick waits 15 s so a clean boot (configd enabling
+     * the interface + a fast association) always beats the rescue. */
+    bootAttachCompleteMS_=nowMS();bootRescueArmed_=true;
+    rescueTimer_->setTimeoutMS(15000);
+    return true;
 }
 void RTWUSBController::shutdownPlatform() {
     closing_=true;quiesce(true);
@@ -2390,14 +2741,18 @@ void RTWUSBController::releasePlatform() {
     if(retainedForPending_)return;
     if(completionLock_)freeTransfers();
     if(cleanupCall_){thread_call_free(cleanupCall_);cleanupCall_=nullptr;}
+    /* 1.0.6: a queued re-plug call is either cancelled before it fires or,
+     * if already running, held alive by the schedule retain until its own
+     * release balances it; the body exits on a null gate after teardown. */
+    if(reenumCall_){thread_call_cancel(reenumCall_);thread_call_free(reenumCall_);reenumCall_=nullptr;}
     if(netif_){detachInterface(netif_,true);netif_->release();netif_=nullptr;}stats_=nullptr;
     IOCommandGate *oldGate=gate_;
     if(lifecycleLock_){IOLockLock(lifecycleLock_);oldGate=gate_;gate_=nullptr;IOLockUnlock(lifecycleLock_);}
     if(loop_){
-        IOEventSource*events[]={scanTimer_,calibTimer_,watchdogTimer_,completionEvent_,oldGate};
+        IOEventSource*events[]={scanTimer_,calibTimer_,watchdogTimer_,rescueTimer_,completionEvent_,oldGate};
         for(auto*event:events)if(event){if(event!=oldGate)event->disable();if(event->getWorkLoop()==loop_)loop_->removeEventSource(event);event->release();}
     }
-    scanTimer_=calibTimer_=watchdogTimer_=nullptr;completionEvent_=nullptr;gate_=nullptr;
+    scanTimer_=calibTimer_=watchdogTimer_=nullptr;rescueTimer_=nullptr;completionEvent_=nullptr;gate_=nullptr;
     if(rxPipe_){rxPipe_->release();rxPipe_=nullptr;}for(auto*&p:txPipes_)if(p){p->release();p=nullptr;}
     closeUSBProvider();
     if(lifecycleLock_)IOLockLock(lifecycleLock_);
@@ -2455,4 +2810,147 @@ void RTWUSBController::deferredCleanup(thread_call_param_t argument,thread_call_
     gate->release();lease->release();
     controller->releasePlatform();
     controller->release(); // Balance shutdownPlatform's deferred retain exactly once.
+}
+/* ---- 1.0.5/1.0.6 software re-plug (the unplug/replug cure, in software) ----
+ * 1.0.6 re-gating: the 1.0.5 ladder only counted failures that reached the
+ * chip-start path, and disarmed itself once a bring-up "succeeded". The
+ * reboot-2 field wedge defeats both: the first failed bring-up latches
+ * usbError_ so every later attempt exits before counting, and a station
+ * that comes up as a zombie never authorizes - the cure stayed silent.
+ * The guards below now key on the boot-rescue state instead: armed at
+ * start(), disarmed by the first live carrier (bootEverAuthorized_) and
+ * by the 12-minute window, with the same budgets as before. */
+void RTWUSBController::scheduleSoftwareReplug(const char *why,bool timeBased) {
+    if(!reenumCall_||!completionLock_||closing_||stopping_)return;
+    /* 1.0.34: the 8821CU family never re-enumerates itself. The old kexts do
+     * not reset these dongles and they stay on the bus after a reboot; our
+     * software re-plug made them vanish ("no Realtek dongle visible"). */
+    if(family_==RTW_WIFI_RTL8821CU)return;
+    /* 1.0.6: never replug a session the user has seen working, and never
+     * outside the boot-rescue window. */
+    if(bootEverAuthorized_||!bootRescueArmed_)return;
+    if(nowMS()-bootAttachCompleteMS_>=RTW_BOOT_RESCUE_WINDOW_MS)return;
+    if(reenumFires_>=3)return;              /* per-attach budget */
+    if(g_softwareReplugsSinceBoot>=6)return;/* per-boot budget */
+    if(!timeBased){const uint32_t need=4u<<reenumFires_;if(wedgedBringUps_<need)return;} /* 4th, 8th, 16th failure */
+    if(g_lastSoftwareReplugMS&&nowMS()-g_lastSoftwareReplugMS<20000)return;
+    bool fire=false;
+    IOInterruptState lock=IOSimpleLockLockDisableInterrupt(completionLock_);
+    if(!reenumQueued_){reenumQueued_=true;fire=true;}
+    IOSimpleLockUnlockEnableInterrupt(completionLock_,lock);
+    if(!fire)return;
+    g_lastSoftwareReplugMS=nowMS();
+    ++g_softwareReplugsSinceBoot;
+    ++reenumFires_;
+    IOLog("[macOS-RTL-WIFI 1.0.16] boot rescue (%s): software re-plug %u/3 (USB re-enumeration, %u/6 used this boot)\n",
+          why,(unsigned)reenumFires_,(unsigned)g_softwareReplugsSinceBoot);
+    retain(); /* reenumerateCall releases exactly once. */
+    thread_call_enter(reenumCall_);
+}
+/* 1.0.9 session rescue (RTLWiFiBar.log 2026-11-18 07:42-07:48, driver
+ * 1.0.8): the DHCP auto-heal's restart latched usbError_ mid-session, and
+ * the boot rescue refused to fire because this session had already seen a
+ * working link (bootEverAuthorized_) - the dongle sat dead, 0xe00002d8 on
+ * every scan, client reopens useless, for 6+ minutes until a physical
+ * replug cured it. The app's 1 Hz status poll lands in the NotReady guard
+ * of handleControl while the transport is latched: this tick measures how
+ * long the fault has persisted and re-plugs on its own. Budget: 20 s of a
+ * confirmed dead transport, max 2 per attach, and the boot rescue's global
+ * per-boot ceiling and 20 s spacing still apply. The re-plug itself is the
+ * proven boot path (IOUSBHostDevice::reset() off-gate); the app already
+ * rides out the re-enumeration with its client-reopen logic. */
+void RTWUSBController::considerSessionRescue() {
+    if(!reenumCall_||!completionLock_)return;
+    if(family_==RTW_WIFI_RTL8821CU)return; /* 1.0.34: no self re-plug on 8821CU */
+    if(!attached_||!present_||sleeping_||stopping_||closing_)return;
+    if(usbError_==kIOReturnSuccess){sessionFaultSinceMS_=0;return;}
+    const uint64_t now=nowMS();
+    if(!sessionFaultSinceMS_){
+        sessionFaultSinceMS_=now;
+        IOLog("[macOS-RTL-WIFI 1.0.16] USB transport fault latched - session rescue armed (re-plug after 20 s dead, max 2)\n");
+        return;
+    }
+    if(now-sessionFaultSinceMS_<20000)return;   /* the fault must persist */
+    if(sessionReplugFires_>=2)return;           /* per-attach budget */
+    if(g_softwareReplugsSinceBoot>=10)return;   /* global per-boot ceiling */
+    if(g_lastSoftwareReplugMS&&now-g_lastSoftwareReplugMS<20000)return;
+    bool fire=false;
+    IOInterruptState lock=IOSimpleLockLockDisableInterrupt(completionLock_);
+    if(!reenumQueued_){reenumQueued_=true;fire=true;}
+    IOSimpleLockUnlockEnableInterrupt(completionLock_,lock);
+    if(!fire)return;
+    ++sessionReplugFires_;
+    g_lastSoftwareReplugMS=now;
+    ++g_softwareReplugsSinceBoot;
+    IOLog("[macOS-RTL-WIFI 1.0.16] session rescue (%u/2): USB transport dead %llu s - re-enumerating the dongle by itself\n",
+          (unsigned)sessionReplugFires_,
+          (unsigned long long)((now-sessionFaultSinceMS_)/1000));
+    retain(); /* reenumerateCall releases exactly once. */
+    thread_call_enter(reenumCall_);
+}
+/* 1.0.6 boot rescue: a watchdog that works even while the station never
+ * started (watchdogAction exits early while !running_) and that also
+ * catches the zombie shape (station up, radio dead, join never
+ * authorized). Runs on the shared workloop; every field it reads is
+ * written under the same workloop, so no extra locking is needed. */
+void RTWUSBController::bootRescueTick(OSObject *o,IOTimerEventSource*) {
+    auto*s=static_cast<RTWUSBController*>(o);
+    if(!s->rescueTimer_||s->stopping_||s->closing_||s->sleeping_)return;
+    const uint64_t now=nowMS();
+    /* 1.0.11: do NOT cancel when bootEverAuthorized_ - a flappy association
+     * (brief RUN then drop) must stay rescuable. The timer keeps ticking;
+     * the flappy condition below handles the post-RUN drop. */
+    if(now-s->bootAttachCompleteMS_>=RTW_BOOT_RESCUE_WINDOW_MS){s->rescueTimer_->cancelTimeout();return;}/* window over */
+    const char*why=nullptr;
+    if(s->bringUpAttempts_&&!s->bringUpEverSucceeded_&&now-s->bootAttachCompleteMS_>=45000)
+        why="chip bring-up never succeeded";
+    /* 1.0.13 unified fast rescue (field logs 2026-11-19 07:07 / 22:02 /
+     * 22:39 / 23:01, drivers 1.0.9-1.0.12): the post-reboot AUTH cycle
+     * comes in two shapes - "never authorized" and "brief RUN flaps" - and
+     * the split detectors kept failing each other: 1.0.11's flappy clock
+     * (90 s after lastRunMs_) SLID every time a re-submit reached another
+     * 1-second RUN (field 23:05: fire at +184 s instead of +92 s), and the
+     * 1.0.12 split re-created a deadlock between the branches and the
+     * bootEverAuthorized_ guard. ONE detector, ONE clock, no sliding: a
+     * join that reached AUTH at least once and is still unresolved 60 s
+     * after the FIRST submit of this attach gets a software re-plug,
+     * whether or not a brief RUN happened in between (a brief RUN during
+     * an unresolved 60 s join is pathology, not progress). If a brief RUN
+     * set bootEverAuthorized_, clear it so the re-plug guard passes. 60 s
+     * chosen against the app's own watch: healthy joins land in 3-9 s and
+     * the app re-submits at 46 s - by 60 s attempt 2 is already failing,
+     * so the re-plug lands mid-watch and the app's own re-submit (or the
+     * 8.7.18 post-rescue re-arm) connects on the fresh instance.
+     * End-to-end recovery target: ~90-110 s. Budgets unchanged: 3 per
+     * attach, 6 per boot, 20 s spacing, 12-minute window, never while RUN. */
+    else if(s->bringUpEverSucceeded_&&s->joinRequested_&&s->everReachedAuth_&&
+            s->firstJoinRequestedMS_&&now-s->firstJoinRequestedMS_>=60000&&
+            s->core_.sc_ic.ic_state!=IEEE80211_S_RUN){
+        const bool flapped=s->bootEverAuthorized_;
+        s->bootEverAuthorized_=false; /* a brief RUN inside an unresolved join is not a proven-good session */
+        why=flapped?"link flapped (brief RUN) and the join is still unresolved 60 s in"
+                  :"station up but the requested join never authorized";
+    }
+    if(why&&!s->rescueWhyLogged_){s->rescueWhyLogged_=true;
+        IOLog("[macOS-RTL-WIFI 1.0.16] boot rescue: %s - scheduling software re-plug\n",why);}
+    if(why)s->scheduleSoftwareReplug(why,true);
+    s->rescueTimer_->setTimeoutMS(5000);
+}
+void RTWUSBController::reenumerateCall(thread_call_param_t argument,thread_call_param_t) {
+    auto* controller=static_cast<RTWUSBController*>(argument);
+    IOUSBHostDevice* device=nullptr;
+    IOWorkLoop* lease=nullptr;auto* gate=controller->copyGate(&lease);
+    if(gate){gate->runAction(gated,(void*)SoftwareReplug,&device);gate->release();lease->release();}
+    if(device){
+        IOLog("[macOS-RTL-WIFI 1.0.16] re-enumerating the USB device now (same effect as unplug/replug)\n");
+        /* IOUSBHostDevice::reset() - Apple's documented replacement for the
+         * legacy IOUSBDevice::ReEnumerateDevice (SDK migration table):
+         * terminate the device, reset the hub port, re-enumerate, publish a
+         * fresh device for matching. Declared on every SDK from 10.11 through
+         * macOS 26, and called off the USB port workloop here as required. */
+        IOReturn r=device->reset();
+        IOLog("[macOS-RTL-WIFI 1.0.16] software re-plug -> 0x%08x\n",(unsigned)r);
+        device->release(); /* Balanced by the retain inside SoftwareReplug. */
+    }
+    controller->release(); /* Balanced by the schedule retain. */
 }

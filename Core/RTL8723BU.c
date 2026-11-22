@@ -167,7 +167,11 @@ failed:
  r23_release_calibration(p);if(c->last_error)return r23_paused(c,e);
  /* A completed calibration failure can be retried while the bus remains
   * healthy; a transport/restore failure stays sticky until reinitialization. */
- p->cleanup=true;(void)rtl8xxxu_write8(p,REG_TXPAUSE,0xff);p->cleanup=false;return c->last_error?c->last_error:e;
+ p->cleanup=true;(void)rtl8xxxu_write8(p,REG_TXPAUSE,0xff);p->cleanup=false;
+ /* A calibration that merely does not converge (LCK/IQK) on a healthy bus must not kill the chip: the
+  * vendor driver carries on with default coefficients. Only a real transport error stays fatal. */
+ if(!c->last_error){c->calibrated=1;p->last_thermal=c->board.thermal_meter;return 0;}
+ return c->last_error;
 }
 int rtw_8723bu_stop(rtw_8723bu*c){
  struct rtw_8723bu_private*p;int saved;if(!valid(c))return EINVAL;p=c->private_state;saved=c->last_error;c->calibrated=c->associated=0;++c->epoch;

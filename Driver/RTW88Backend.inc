@@ -43,7 +43,7 @@ int RTWUSBController::r88Bulk(void*p,uint8_t queue,const uint8_t*bytes,size_t le
  const size_t wire=length+(length%s->txMPS_[pipe]==0?1:0);auto*m=IOBufferMemoryDescriptor::withCapacity(wire,kIODirectionOut);
  if(!m||!m->getBytesNoCopy()){if(m)m->release();return ENOMEM;}memcpy(m->getBytesNoCopy(),bytes,length);if(wire!=length)static_cast<uint8_t*>(m->getBytesNoCopy())[length]=0;
  auto result=m->prepare(kIODirectionOut);uint32_t actual=0;if(result==kIOReturnSuccess){result=s->txPipes_[pipe]->io(m,(uint32_t)wire,actual,1000);m->complete(kIODirectionOut);}m->release();
- if(result!=kIOReturnSuccess||actual!=wire){s->fault(result==kIOReturnSuccess?kIOReturnUnderrun:result);return EIO;}return 0;
+ if(result!=kIOReturnSuccess||actual!=wire){s->fault(result==kIOReturnSuccess?kIOReturnUnderrun:result,12,(uint32_t)length);return EIO;}return 0;
 }
 int RTWUSBController::bootstrap88(bool compareMAC){
  if(!is88Family()||!r88Storage_||!rxPipe_||endpoints_.num_bulk_in!=1||endpoints_.num_bulk_out<2||endpoints_.num_bulk_out>4||ioError(this))return ENXIO;
@@ -55,25 +55,72 @@ int RTWUSBController::bootstrap88(bool compareMAC){
   e=rtw_chip_identity_revalidate(r88ResolvedIdentity_,&bus);if(e){clear88Discovery(true);return e;}
  }
  coex88Stop();rtw88_phy_radio_invalidate(&r88PHY_);r88PHY_={};r88MAC_={};r88Station_={};r88PacketSequence_=0;
- e=prepare88Identity(bus);if(e)return e;remember88Authority(false);if(r88Core_.firmware.family!=family_)return ENODEV;
- e=rtw88_mac_prepare(family_,endpoints_.num_bulk_out,&r88MAC_.fifo);if(e)return e;
- e=rtw88_boot_identify(&r88Core_);if(e)return e;e=rtw88_boot_power_on(&r88Core_);if(e)return e;
+ r88BootSub_=2;e=prepare88Identity(bus);if(e)return e;remember88Authority(false);if(r88Core_.firmware.family!=family_)return ENODEV;
+ r88BootSub_=3;e=rtw88_mac_prepare(family_,endpoints_.num_bulk_out,&r88MAC_.fifo);if(e)return e;
+ ++r88BootSeq_;{char t[16];snprintf(t,sizeof(t),"pre%u",(unsigned)r88BootSeq_);snapshot88(t,false);}
+ r88BootSub_=4;e=rtw88_boot_identify(&r88Core_);if(e)return e;r88BootSub_=5;e=rtw88_boot_power_on(&r88Core_);if(e)return e;r88BootSub_=6;
  /* Linux main.c rtw_chip_efuse_enable requests the hardware report before
   * firmware download/CPU boot. A later read of19 cannot create that report. */
  e=recheck88Identity();if(e)return e;
- e=r88Write(this,0x1a0,1,0xfd);if(e)return e;
+ {char t[16];snprintf(t,sizeof(t),"post%u",(unsigned)r88BootSeq_);snapshot88(t,false);}
+ /* 1.0.18 experiment: field snapshots 2026-11-20 (RTL8812BU 2357:0115) show a
+  * failing post-reboot boot keeps always-on bits that a cold plug has clear
+  * (0x4c b24, 0x70 b26, 0xb4 b24). The software power cycle does not reset
+  * them. Clear only bits that read set; a cold chip reads them clear, so this
+  * is a no-op there. Result is logged and published as RTWResidual. */
+ if(family_==RTW_WIFI_RTL8822BU||family_==RTW_WIFI_RTL8821CU){
+  static const struct{uint16_t a;uint32_t m;}residual[]={{0x4c,1U<<24},{0x70,1U<<26}};
+  char note[48]{};size_t nn=0;
+  for(const auto&r:residual){uint32_t v=0;if(r88Read(this,r.a,4,&v)||!(v&r.m))continue;
+   nn+=(size_t)snprintf(note+nn,sizeof(note)-nn,"%x ",(unsigned)r.a);(void)r88Write(this,r.a,4,v&~r.m);}
+  if(nn){IOLog("[macOS-RTL-WIFI 1.0.19] residual always-on bits cleared at: %s\n",note);}
+  setProperty("RTWResidual",nn?note:"none");
+ }
+ r88BootSub_=8;e=r88Write(this,0x1a0,1,0xfd);if(e)return e;
  const uint8_t*image=family_==RTW_WIFI_RTL8821CU?RTW8821CUFirmware:family_==RTW_WIFI_RTL8822BU?RTW8822BUFirmware:RTW8822CUFirmware;
  size_t bytes=family_==RTW_WIFI_RTL8821CU?sizeof(RTW8821CUFirmware):family_==RTW_WIFI_RTL8822BU?sizeof(RTW8822BUFirmware):sizeof(RTW8822CUFirmware);
  auto*scratch=static_cast<uint8_t*>(r88Storage_)+RTW88_PHY_RADIO_SCRATCH_BYTES;
- e=rtw88_fw_download(&r88Core_.firmware,image,bytes,scratch,RTW88_FW_SCRATCH_BYTES);if(e)return e;
+ r88BootSub_=9;e=rtw88_fw_download(&r88Core_.firmware,image,bytes,scratch,RTW88_FW_SCRATCH_BYTES);if(e)return e;r88BootSub_=10;
  e=rtw88_boot_read_board(&r88Core_,scratch+RTW88_FW_SCRATCH_BYTES,RTW88_EFUSE_SCRATCH_BYTES);if(e)return e;
- e=rtw88_boot_read_features(&r88Core_);if(e)return e;
+ r88BootSub_=11;e=rtw88_boot_read_features(&r88Core_);if(e)return e;
  if(compareMAC&&(!r88BoardKnown_||memcmp(r88MACAddress_,r88Core_.board.mac,6)||core_.ntxchains!=r88Core_.board.tx_streams))return ENODEV;
  if(!compareMAC){memcpy(r88MACAddress_,r88Core_.board.mac,6);r88BoardKnown_=true;}remember88Authority(true);return publish88Identity();
 }
+void RTWUSBController::snapshot88(const char*tag,bool full){
+ /* 1.0.17/1.0.19: read-only register dump published as RTWSnap_<tag>.
+  * "short" (pre/post power-on): SYS + MAC/TXDMA. "full": adds RCR/BSSID,
+  * 0x700-0xbfc (MAC ext + BB page A) and 0x1000-0x10fc. */
+ static const struct{uint16_t from,to;bool shortToo;}ranges[]={{0x000,0x0fc,true},{0x100,0x13c,false},{0x400,0x5fc,true},{0x600,0x6fc,false},{0x700,0x7fc,false},{0x800,0xbfc,false},{0x1000,0x10fc,false}};
+ const size_t cap=16384;char*buf=static_cast<char*>(IOMalloc(cap));if(!buf)return;size_t n=0;
+ n+=(size_t)snprintf(buf+n,cap-n,"speed=%d ",(int)(rxPipe_?(int)rxPipe_->getSpeed():-1));
+ for(const auto&r:ranges){
+  if(!full&&!r.shortToo)continue;
+  for(unsigned a=r.from;a<=r.to&&n+24<cap;a+=4){uint32_t v=0;
+   v=readRegister((uint16_t)a,4);if(ioError(this)){n+=(size_t)snprintf(buf+n,cap-n,"%x=ERR ",a);break;}
+   n+=(size_t)snprintf(buf+n,cap-n,"%x=%x ",a,(unsigned)v);}
+ }
+ char key[32];snprintf(key,sizeof(key),"RTWSnap_%s",tag);setProperty(key,buf);
+ IOFree(buf,cap);
+}
 int RTWUSBController::attach88(){
  if(!is88Family()||r88Storage_)return EINVAL;r88Storage_=IOMalloc(R88StorageBytes);if(!r88Storage_)return ENOMEM;bzero(r88Storage_,R88StorageBytes);
- int e=bootstrap88(false);if(e){if(r88Core_.firmware.identified&&!ioError(this))(void)rtw88_boot_stop(&r88Core_);release88Storage();return e;}
+ int e=bootstrap88(false);
+ /* 1.0.40: the attach-time bootstrap can time out right after a reboot
+  * (firmware download, ETIMEDOUT) and then the whole driver fails to load
+  * ("dongle IS on USB but the driver is not loaded") until the dongle is
+  * moved to another port. On the 8821CU retry up to 3 times, 300 ms apart,
+  * clearing the latched error and powering the chip down in between. */
+ if(e&&family_==RTW_WIFI_RTL8821CU){
+  for(unsigned retry=0;retry<3&&e&&!ioError(this);++retry){
+   if(r88Core_.firmware.identified)(void)rtw88_boot_stop(&r88Core_);
+   IOSleep(300);
+   r88Core_.firmware.last_error=0;
+   ++attachBringUpRetries_;
+   e=bootstrap88(false);
+  }
+  setProperty("RTWDiagAttachBringUpRetries",(unsigned long long)attachBringUpRetries_,32);
+ }
+ if(e){if(r88Core_.firmware.identified&&!ioError(this))(void)rtw88_boot_stop(&r88Core_);release88Storage();return e;}
  if(r88Core_.board.btcoex){e=rtw88_coex_board_supported(&r88Core_);if(e){(void)rtw88_boot_stop(&r88Core_);release88Storage();return e;}}
  /* OTP requires actual powered/running firmware. Read it before interface
   * attach,then power down; start re-reads and compares the immutable MAC. */
@@ -95,19 +142,19 @@ int RTWUSBController::start88(){
  auto&ic=core_.sc_ic;auto&ifp=ic.ic_if;if(!is88Family()||!r88BoardKnown_||!r88Storage_||!ic.ic_bss||ic.ic_opmode!=IEEE80211_M_STA||ioError(this))return ENXIO;
  if(r88Core_.firmware.powered||r88Core_.firmware.firmware_running)return EBUSY;
  radioReady_=r88Media_=r88RateReady_=r88RSSIValid_=false;r88Rates_={};r88Channel_=r88RSSI_=0;core_.core_error=0;
- int e=allocateTransfers();if(e)goto fail;e=bootstrap88(true);if(e)goto fail;
+ int stage=1;int e=allocateTransfers();if(e)goto fail;stage=2;e=bootstrap88(true);if(e)goto fail;
  {rtw88_usb_speed speed=rxPipe_->getSpeed()>=kUSBHostConnectionSpeedSuper?RTW88_USB_SUPER_SPEED:rxPipe_->getSpeed()==kUSBHostConnectionSpeedHigh?RTW88_USB_HIGH_SPEED:RTW88_USB_FULL_SPEED;
-  e=rtw88_mac_initialize(&r88MAC_,&r88Core_.firmware,endpoints_.num_bulk_out,speed);if(e)goto fail;}
- e=rtw88_phy_load_boot_tables(&r88PHY_,&r88Core_,&r88MAC_);if(e)goto fail;
- e=rtw88_phy_radio_initialize(&r88PHY_,r88Storage_,RTW88_PHY_RADIO_SCRATCH_BYTES,RTW88_PHY_REGD_WORLD);if(e)goto fail;
- e=rtw88_phy_radio_set_h2c_sequence(&r88PHY_,&r88PacketSequence_);if(e)goto fail;
+  stage=3;e=rtw88_mac_initialize(&r88MAC_,&r88Core_.firmware,endpoints_.num_bulk_out,speed);if(e)goto fail;}
+ stage=4;e=rtw88_phy_load_boot_tables(&r88PHY_,&r88Core_,&r88MAC_);if(e)goto fail;
+ stage=5;e=rtw88_phy_radio_initialize(&r88PHY_,r88Storage_,RTW88_PHY_RADIO_SCRATCH_BYTES,RTW88_PHY_REGD_WORLD);if(e)goto fail;
+ stage=6;e=rtw88_phy_radio_set_h2c_sequence(&r88PHY_,&r88PacketSequence_);if(e)goto fail;
  r88RX_={family_,r88Core_.board.active_rf_paths,r88Core_.board.rfe_option,0,0,0};
  if(family_==RTW_WIFI_RTL8822CU){uint32_t a=0,b=0,c=0;e=r88Read(this,0x1a98,4,&a);if(!e)e=r88Read(this,0x1aa8,4,&b);if(!e)e=r88Read(this,0x1a70,4,&c);if(e)goto fail;r88RX_.cck_gain_low=(uint8_t)(((a>>6)&3U)*16U+((c>>24)&15U));r88RX_.cck_gain_high=(uint8_t)(((a>>14)&3U)*16U+((b>>16)&15U));if(r88RX_.cck_gain_low>r88RX_.cck_gain_high){e=EIO;goto fail;}}
- e=rtw88_station_initialize(&r88Station_,&r88MAC_,r88RadioState,this,r88MACAddress_);if(e)goto fail;
- ic.ic_bss->ni_chan=ic.ic_ibss_chan;e=set88Channel((uint8_t)ieee80211_chan2ieee(&ic,ic.ic_ibss_chan),false);if(e)goto fail;
- e=busInitialize(this);if(e)goto fail;e=send88Startup();if(e)goto fail;e=coex88Start();if(e)goto fail;
- ifq_clr_oactive(&ifp.if_snd);ifp.if_flags|=IFF_RUNNING;e=ic.ic_newstate(&ic,IEEE80211_S_SCAN,-1);if(e)goto fail;radioReady_=true;return 0;
-fail:stop88();core_.core_error=e;return e;
+ stage=8;e=rtw88_station_initialize(&r88Station_,&r88MAC_,r88RadioState,this,r88MACAddress_);if(e)goto fail;
+ stage=9;ic.ic_bss->ni_chan=ic.ic_ibss_chan;e=set88Channel((uint8_t)ieee80211_chan2ieee(&ic,ic.ic_ibss_chan),false);if(e)goto fail;
+ stage=10;e=busInitialize(this);if(e)goto fail;stage=11;e=send88Startup();if(e)goto fail;stage=12;e=coex88Start();if(e)goto fail;r88SnapAuth_=false;r88SnapStall_=false;snapshot88("start");
+ ifq_clr_oactive(&ifp.if_snd);ifp.if_flags|=IFF_RUNNING;stage=13;e=ic.ic_newstate(&ic,IEEE80211_S_SCAN,-1);if(e)goto fail;radioReady_=true;return 0;
+fail:r88StartFailSub_=r88BootSub_;r88StartFailStage_=(uint32_t)stage;r88StartFailErr_=(uint32_t)e;++r88StartFails_;stop88();core_.core_error=e;return e;
 }
 void RTWUSBController::remember88Authority(bool complete){
  r88AuthorityBus_=r88Core_.firmware.bus;r88AuthorityRaw_=r88Core_.raw_bus;
@@ -171,6 +218,7 @@ int RTWUSBController::state88(ieee80211com*ic,ieee80211_state state,int arg){
  if(!ic||!core_.sc_newstate||ic->ic_opmode!=IEEE80211_M_STA||state<IEEE80211_S_INIT||state>IEEE80211_S_RUN)return EINVAL;
  auto previous=ic->ic_state;cancelScan(this);int error=0;
  if(!cleanup88Authorized(state!=IEEE80211_S_INIT)){r88Channel_=0;(void)core_.sc_newstate(ic,IEEE80211_S_INIT,-1);return r88Core_.firmware.last_error?r88Core_.firmware.last_error:ENXIO;}
+ if(previous==IEEE80211_S_AUTH&&state==IEEE80211_S_SCAN&&!r88SnapStall_){r88SnapStall_=true;snapshot88("stall");} /* 1.0.19: first AUTH that fell back to SCAN */
  if(state!=IEEE80211_S_RUN){r88SMPSPending_=r88SMPSWaitingUSB_=false;r88SMPSDeadline_=0;}
  if(r88CoexScanning_&&state!=IEEE80211_S_SCAN&&!ioError(this)&&!r88Core_.firmware.last_error)error=coex88Notify(RTW88_CX_SCAN_FINISH,state);
  if((previous==IEEE80211_S_RUN&&state!=IEEE80211_S_RUN)||state==IEEE80211_S_INIT){cancelCalibration(this);(void)rtw88_phy_radio_set_associated(&r88PHY_,0);if(r88Media_&&r88Core_.firmware.firmware_running&&!r88Core_.firmware.last_error&&!ioError(this)){uint8_t cmd[8]{};if(!rtw_8814au_make_media_status(0,cmd))error=EINVAL;else error=rtw88_station_h2c(&r88Station_,cmd);}r88Media_=r88RateReady_=r88RSSIValid_=false;r88Rates_={};if(previous==IEEE80211_S_RUN&&r88Coex_&&!ioError(this)&&!r88Core_.firmware.last_error){int e=coex88Notify(RTW88_CX_MEDIA_DISCONNECT,state);if(!error)error=e;}}
@@ -180,7 +228,7 @@ int RTWUSBController::state88(ieee80211com*ic,ieee80211_state state,int arg){
  unsigned channel=ieee80211_chan2ieee(ic,ic->ic_bss->ni_chan);if(channel>255||!permits88Channel((uint8_t)channel))return rollback(ENOTSUP);
  if(r88Coex_&&(state==IEEE80211_S_SCAN||state==IEEE80211_S_AUTH)){if((r88Channel_>14)!=(channel>14))error=coex88Notify(RTW88_CX_SWITCH_BAND,state,(uint8_t)channel);if(!error&&state==IEEE80211_S_SCAN&&(!r88CoexScanning_||(r88Channel_>14)!=(channel>14)))error=coex88Notify(RTW88_CX_SCAN_START,state,(uint8_t)channel);if(!error&&state==IEEE80211_S_AUTH)error=coex88Notify(RTW88_CX_ASSOC_START,state,(uint8_t)channel);if(error)return rollback(error);}
  const bool passive=state==IEEE80211_S_SCAN&&(ic->ic_bss->ni_chan->ic_flags&IEEE80211_CHAN_PASSIVE);
- if(state==IEEE80211_S_SCAN||state==IEEE80211_S_AUTH){error=set88Channel((uint8_t)channel,!passive);if(!error)error=station88Hardware(state);}
+ if(state==IEEE80211_S_SCAN||state==IEEE80211_S_AUTH){error=set88Channel((uint8_t)channel,!passive);if(!error)error=station88Hardware(state);if(!error&&state==IEEE80211_S_AUTH&&!r88SnapAuth_){r88SnapAuth_=true;snapshot88("auth");}}
  else if(r88RadioState(this,(uint8_t)channel)!=2)return rollback(ENXIO);
  else if(state==IEEE80211_S_ASSOC)error=station88Hardware(state);
  else if(state==IEEE80211_S_RUN){const auto*n=ic->ic_bss;

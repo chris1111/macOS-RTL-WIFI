@@ -2013,7 +2013,7 @@ ieee80211_send_mgmt(struct ieee80211com *ic, struct ieee80211_node *ni,
 			senderr(ENOMEM, is_tx_nombuf);
 
 		if (ic->ic_opmode == IEEE80211_M_STA)
-			timer = IEEE80211_TRANS_WAIT;
+			timer = IEEE80211_AUTH_WAIT;
 		break;
 
 	case IEEE80211_FC0_SUBTYPE_DEAUTH:
@@ -2034,7 +2034,7 @@ ieee80211_send_mgmt(struct ieee80211com *ic, struct ieee80211_node *ni,
 		if ((m = ieee80211_get_assoc_req(ic, ni, type)) == NULL)
 			senderr(ENOMEM, is_tx_nombuf);
 
-		timer = IEEE80211_TRANS_WAIT;
+		timer = IEEE80211_AUTH_WAIT;
 		break;
 #ifndef IEEE80211_STA_ONLY
 	case IEEE80211_FC0_SUBTYPE_ASSOC_RESP:

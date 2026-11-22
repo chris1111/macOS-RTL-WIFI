@@ -29,6 +29,7 @@ typedef struct {
     rtw_r12au_board board;
     uint8_t logical_rom[512];
     uint8_t identified,powered,dma_prepared,firmware_running,mac_initialized;
+    uint8_t dl_site;uint32_t dl_detail;
     uint8_t h2c_box,cleanup,associated,rsvd_boundary,acq_pages;
     uint16_t firmware_version;
     uint8_t firmware_subversion;

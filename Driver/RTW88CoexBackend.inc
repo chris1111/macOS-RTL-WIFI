@@ -66,12 +66,17 @@ void RTWUSBController::coex88Schedule()
 }
 int RTWUSBController::coex88Tick()
 {
+    coexErrSite_=1;
     if(!r88Coex_||!running_||stopping_||ioError(this))return ENXIO;
+    coexErrSite_=2;
     if(core_.core_error)return core_.core_error;
     const uint64_t now=nowMS();
+    coexErrSite_=3;
     if(r88SMPSPending_&&r88SMPSDeadline_&&now>=r88SMPSDeadline_)return ETIMEDOUT;
+    coexErrSite_=4;
     int error=rtw88_coex_poll(r88Coex_,now);
     if(!error&&now>=r88CoexWatchdogAt_){auto input=coex88Input(core_.sc_ic.ic_state);
+        coexErrSite_=5;
         error=rtw88_coex_watchdog(r88Coex_,&input);
         if(!error){r88CoexTXBytes_=r88CoexRXBytes_=r88CoexTXPackets_=r88CoexRXPackets_=0;
             r88CoexWatchdogAt_=now+2000;}}
@@ -88,7 +93,22 @@ void RTWUSBController::coex88TimerAction(OSObject*object,IOTimerEventSource*)
         return;
     }
     int error=self->coex88Tick();
-    if(error){self->core_.core_error=error;self->quiesce(false);}
+    if(!error){self->coexTickFails_=0;return;}
+    /* 1.0.35: record the first coex failure (published as RTWDiagCoex*). */
+    if(!self->coexErr_){
+        self->coexErr_=(uint32_t)error;self->coexErrSiteLatched_=self->coexErrSite_;
+        self->coexErrAfterAttachMS_=self->bootAttachCompleteMS_?nowMS()-self->bootAttachCompleteMS_:0;
+    }
+    ++self->coexTickErrors_;
+    /* 1.0.35: an 8821CU (no SMPS, single chain) must not latch a permanent
+     * "not ready" on ONE failed MCU health poll while the USB transport is
+     * fine; retry up to 3 times 200 ms apart, then latch as before. */
+    if(self->family_==RTW_WIFI_RTL8821CU&&!self->ioError(self)&&!self->core_.core_error&&
+       ++self->coexTickFails_<3&&self->r88CoexTimer_){
+        self->r88CoexTimer_->setTimeoutMS(200);
+        return;
+    }
+    self->core_.core_error=error;self->quiesce(false);
 }
 int RTWUSBController::prepare88Rate(rtw88_station_rate*out) const
 {

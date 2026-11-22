@@ -1,40 +1,66 @@
 #!/bin/sh
-# By chris1111
+# postinstall: RTLWiFiBar becomes the default menu bar app.
+# By chris1111 for macOS-RTL-WIFI.
 #
 
 . /etc/rc.common
 
-echo "PostInstall_UI.command"
+echo "PostInstall_UI.command (RTLWiFiBar, keep-both)"
 sleep 2
-ditto -x -k --sequesterRsrc --rsrc /Private/tmp/StatusBarApp.zip "/Library/Application Support/WLAN/"
-cp -rp /Private/tmp/RtWlanHelper "/Library/Application Support/WLAN/"
-rm -rf /Private/tmp/StatusBarApp.zip
-rm -rf /Private/tmp/RtWlanHelper
-sleep 1
-#Filename of Application.
-APP="StatusBarApp"
-HELPER="RtWlanHelper"
-INF_NAME="netrtwlanu.inf"
-#APP location.
-ROOT_PATH="/Library/Application Support/WLAN"
-AUX_PATH="com.realtek.utility.wifi"
-UTILITY_SOCK_NAME="/var/tmp/com.realtek.utility.statusbar.socket"
+
+ROOT_PATH="/Applications"
 LAUNCH_AGENT_PLIST="/Library/LaunchAgents/Wlan.Software.plist"
-sudo chmod -R 777 "$ROOT_PATH/$APP.app"
-sudo chmod -R 777 "$ROOT_PATH/$AUX_PATH/"
-sleep 1
-sudo chown -R root:wheel "$ROOT_PATH/$APP.app"
-sudo chown -R root:wheel "$ROOT_PATH/$HELPER"
-# chmod 777 is not work.
-# [MACOS-15]
-chmod -R 777 $UTILITY_SOCK_NAME
-sleep 2
-open "/Library/Application Support/WLAN/StatusBarApp.app"
-sudo chown -R root:wheel $LAUNCH_AGENT_PLIST
-sleep 1
-sudo chmod -R 555 $LAUNCH_AGENT_PLIST
+
+# 3. Install/refresh RTLWiFiBar (the new default).
+if [ -f /Private/tmp/RTLWiFiBar.zip ]; then
+  ditto -x -k --sequesterRsrc --rsrc /Private/tmp/RTLWiFiBar.zip "$ROOT_PATH/"
+else
+  echo "WARNING: /Private/tmp/RTLWiFiBar.zip missing - app payload not installed"
+fi
+rm -f /Private/tmp/RTLWiFiBar.zip
+
+# 4. Fix ownership of the installed bundles (755 so the user can launch them).
+if [ -d "$ROOT_PATH/RTLWiFiBar.app" ]; then
+  chmod -R 755 "$ROOT_PATH/RTLWiFiBar.app"
+  chown -R root:wheel "$ROOT_PATH/RTLWiFiBar.app"
+else
+  echo "ERROR: $ROOT_PATH/RTLWiFiBar.app not present after install"
+fi
+
+# 5. The launch agent must point at RTLWiFiBar. The agents package installs
+#    the same plist, but package order makes the app package install first,
+#    so write it here as well (belt and braces) and own it.
+cat > "$LAUNCH_AGENT_PLIST" <<'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>Wlan.Software</string>
+    <key>Program</key>
+    <string>/Applications/RTLWiFiBar.app/Contents/MacOS/RTLWiFiBar</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+    <key>ThrottleInterval</key>
+    <integer>15</integer>
+</dict>
+</plist>
+PLIST
+chown root:wheel "$LAUNCH_AGENT_PLIST"
+chmod 644 "$LAUNCH_AGENT_PLIST"
+
+# 6. Start RTLWiFiBar in the console user's GUI session.
+CONSOLE_USER=$(stat -f %u /dev/console 2>/dev/null || echo 501)
+if [ -n "$CONSOLE_USER" ] && [ "$CONSOLE_USER" != "0" ]; then
+  launchctl bootout "gui/$CONSOLE_USER/Wlan.Software" 2>/dev/null
+  launchctl bootstrap "gui/$CONSOLE_USER" "$LAUNCH_AGENT_PLIST" 2>/dev/null
+  launchctl kickstart "gui/$CONSOLE_USER/Wlan.Software" 2>/dev/null
+  echo "launchd agent bootstrapped for uid $CONSOLE_USER"
+fi
+
 echo "Done"
-
-
-
-

@@ -540,6 +540,31 @@ static IOReturn oidQuery(RTWUSBController* controller, RTWlanUOidFrame* frame,
         }
         frame->retLen = 4;
         return kIOReturnSuccess;
+    case RTWLANU_QID_JOIN_STATE:
+        /* 1.0.8 (RTLWiFiBar 8.7.14): the join monitor polls this while a
+         * user join is in flight so the app log shows exactly how far the
+         * association got - scanning, authenticating, associating, RUN -
+         * instead of a silent "accepted" that never moves. State values
+         * are the net80211 station states; beacon age distinguishes a
+         * healthy RUN from a zombie. Transitions are logged so one field
+         * capture pins down the furthest state a dead join reached. */
+        if (frame->length < 8u) { frame->retLen = 0; return kIOReturnBadArgument; }
+        {
+            const uint32_t state = status ? status->state : 0u;
+            static uint32_t joinStateReported = 0xFFFFFFFFu;
+            if (state != joinStateReported) {
+                joinStateReported = state;
+                IOLog("RtWlanUCompat: join state report -> %u "
+                      "(auth=%u keylen=%u ssidlen=%u)\n",
+                      (unsigned)state, (unsigned)g_joinState.authMode,
+                      (unsigned)g_joinState.passphraseLength,
+                      (unsigned)g_joinState.ssidLength);
+            }
+            store32(frame->data, state);
+            store32(frame->data + 4, status ? status->beaconAgeMs : 0u);
+        }
+        frame->retLen = 8;
+        return kIOReturnSuccess;
     case RTWLANU_QID_LINK_STATUS:
     case RTWLANU_QID_ASSOC_STATE:
         /* NicIFLinkStatusWatchdog polls these to decide the bar image and

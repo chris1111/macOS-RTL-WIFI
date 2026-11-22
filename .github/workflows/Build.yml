@@ -4,6 +4,7 @@
 #
 #   Release.zip  containing
 #     - macOS-RTL-WIFI.kext
+#     - RTLWiFiBar.app   (the menu bar app, also installed by the pkg)
 #     - Wireless USB macOS-RTL-WIFI.pkg
 #     - Support Donate.html
 #
@@ -73,6 +74,25 @@ jobs:
             exit 1
           }
 
+          # --- menu bar app: Create_Build.tool builds it into Build/Release ---
+          APP="Build/Release/RTLWiFiBar.app"
+          test -d "${APP}"
+          test -s "${APP}/Contents/MacOS/RTLWiFiBar"
+          APP_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' \
+            "${APP}/Contents/Info.plist")"
+          [[ "${APP_ID}" == "com.rtlwifi.RTLWiFiBar" ]] || {
+            echo "Wrong app bundle id: ${APP_ID}" >&2
+            exit 1
+          }
+          # UI translations must be inside the bundle (16 languages).
+          LPROJ_COUNT="$(find "${APP}/Contents/Resources" -maxdepth 1 -name '*.lproj' | wc -l | tr -d ' ')"
+          [[ "${LPROJ_COUNT}" -ge 16 ]] || {
+            echo "Expected at least 16 .lproj folders in the app, found ${LPROJ_COUNT}" >&2
+            exit 1
+          }
+          codesign --verify --strict "${APP}" || \
+            echo "::warning::RTLWiFiBar.app has no valid (ad-hoc) signature"
+
           # --- installer package ---
           PKG="Build/Release/Wireless USB macOS-RTL-WIFI.pkg"
           test -s "${PKG}"
@@ -95,6 +115,7 @@ jobs:
           mkdir -p "${STAGE}" "${RELEASE}"
 
           ditto "Build/Release/macOS-RTL-WIFI.kext"            "${STAGE}/macOS-RTL-WIFI.kext"
+          ditto "Build/Release/RTLWiFiBar.app"                 "${STAGE}/RTLWiFiBar.app"
           ditto "Build/Release/Wireless USB macOS-RTL-WIFI.pkg" "${STAGE}/Wireless USB macOS-RTL-WIFI.pkg"
           ditto "Build/Release/Support Donate.html"             "${STAGE}/Support Donate.html"
 
@@ -111,6 +132,10 @@ jobs:
           test -d "${CHECK}/macOS-RTL-WIFI.kext"
           test -s "${CHECK}/macOS-RTL-WIFI.kext/Contents/MacOS/macOS-RTL-WIFI"
           codesign --verify --strict "${CHECK}/macOS-RTL-WIFI.kext"
+          test -d "${CHECK}/RTLWiFiBar.app"
+          test -s "${CHECK}/RTLWiFiBar.app/Contents/MacOS/RTLWiFiBar"
+          codesign --verify --strict "${CHECK}/RTLWiFiBar.app" || \
+            echo "::warning::RTLWiFiBar.app has no valid (ad-hoc) signature after the zip roundtrip"
           test -s "${CHECK}/Wireless USB macOS-RTL-WIFI.pkg"
           test -s "${CHECK}/Support Donate.html"
           grep -q "leblond1111@gmail.com" "${CHECK}/Support Donate.html"
@@ -137,6 +162,9 @@ jobs:
           retention-days: 14
 
       - name: Publish the 1.0.1 release
+        # Only the default branch may publish; other branches still build and
+        # upload the workflow artifact above.
+        if: ${{ github.ref_name == github.event.repository.default_branch }}
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -160,14 +188,17 @@ jobs:
 
           - **Kext:** macOS-RTL-WIFI ${KEXT_VER} - x86_64 (Intel), ad-hoc signed,
             bundle id com.rtlwifi.macos.driver
+          - **Menu bar app:** RTLWiFiBar.app - choose the network and enter the
+            router password; the UI follows the macOS language (16 languages)
           - **Full installer:** Wireless USB macOS-RTL-WIFI.pkg - delivers the
-            kext to the EFI partition for OpenCore and Clover, with the original
-            Realtek RTLWiFiBar and its launch agent
+            kext to the EFI partition for OpenCore and Clover, with RTLWiFiBar
+            and its launch agent
           - **Support Donate.html** - PayPal donation page
 
           ### Downloads
             - **Release.zip** - Everything in one download:
             - macOS-RTL-WIFI.kext - the driver (inject via OpenCore or Clover)
+            - RTLWiFiBar.app - the menu bar app (already included in the pkg)
             - Wireless USB macOS-RTL-WIFI.pkg - recommended full installer
               (OpenCore + Clover delivery to the EFI partition, RTLWiFiBar
               and launch agent)
@@ -175,9 +206,11 @@ jobs:
 
           ### Compatibility and scope
           - Intel Macs, macOS 11 Big Sur through macOS 26 Tahoe
-          - Station mode, 2.4 GHz (802.11b/g), WPA2-Personal
-          - Realtek RTL8188EU / RTL8192EU USB adapters - see the README for the
-            full supported-adapter list
+          - Station mode, WPA2-Personal
+          - Realtek USB adapters (RTL8188EU, RTL8192CU/EU, RTL8723BU, RTL8821AU,
+            RTL8821CU, RTL8822BU ...) - see DONGLES.md for the adapters tested
+            so far and KNOWN-ISSUES.md for open problems (for example DHCP on
+            RTL8188EU adapters: a manual IP address works)
 
           ### First install notes
           - The kext bundle id is com.rtlwifi.macos.driver; on the very first

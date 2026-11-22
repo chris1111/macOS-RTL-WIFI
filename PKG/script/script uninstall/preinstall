@@ -7,12 +7,11 @@
 
 
 echo "Phase: Terminate Utility ..."
-killall -c StatusBarApp
+killall -c RTLWiFiBar
 sleep 2
 
 echo "Phase: Remove Utility Related …"
 	rm -rf /Library/LaunchAgents/Wlan.Software.plist
-	rm -rf /Library/LaunchDaemons/Wlan.Software*
 
 echo "Phase: Remove Install Log .."
 rm -rf /private/var/db/receipts/com.realtek.*

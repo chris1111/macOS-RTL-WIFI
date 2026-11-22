@@ -35,8 +35,19 @@ static int limit_for(const struct rtw_txpwr_lmt_cfg_pair*table,size_t count,unsi
  }
  if(!any)return ENOTSUP;*out=minimum;return 0;
 }
-static int base_index(const u8 rom[42],unsigned band,unsigned group_index,unsigned width,unsigned rate,int*out){
+static int base_index(const u8 rom0[42],unsigned band,unsigned group_index,unsigned width,unsigned rate,int*out){
  unsigned section=power_section(rate);int value;
+ /* Unprogrammed (0xff) efuse bytes: the vendor drivers treat the diff bytes as 0 and borrow the
+  * nearest programmed channel group instead of refusing the channel (seen on TP-Link T2U Plus ch44). */
+ u8 rom[42];memcpy(rom,rom0,42);
+ {static const unsigned diff[]={11,12,32,33,37,38};for(unsigned i=0;i<6;++i)if(rom[diff[i]]==255)rom[diff[i]]=0;}
+ {unsigned lo=band?18:(group_index<6?0:6),n=band?14:6;
+  for(unsigned pass=0;pass<2;++pass){/* pass0: current+next group (for 40 MHz averaging) */
+   (void)pass;}
+  /* fill invalid group bytes from nearest valid one */
+  if(band){for(unsigned i=0;i<14;++i)if(rom[18+i]>63){int best=-1;for(unsigned d=1;d<14&&best<0;++d){if(i>=d&&rom[18+i-d]<=63)best=18+(int)i-(int)d;else if(i+d<14&&rom[18+i+d]<=63)best=18+(int)i+(int)d;}if(best>=0)rom[18+i]=rom[best];}}
+  else{for(unsigned i=0;i<6;++i){unsigned bases[2]={0,6};for(unsigned k=0;k<2;++k){unsigned at=bases[k]+i;if(rom[at]>63){int best=-1;for(unsigned d=1;d<6&&best<0;++d){if(i>=d&&rom[bases[k]+i-d]<=63)best=(int)bases[k]+(int)i-(int)d;else if(i+d<6&&rom[bases[k]+i+d]<=63)best=(int)bases[k]+(int)i+(int)d;}if(best>=0)rom[at]=rom[best];}}}}
+  (void)lo;(void)n;}
  if(!band){
   unsigned base=section==0?group_index:6+group_index;if(rom[base]>63)return ENOTSUP;value=rom[base];
   if(section==1){if(rom[11]==255)return ENOTSUP;value+=signed4(rom[11]);}

@@ -76,3 +76,10 @@
     int prepare88Rate(rtw88_station_rate*) const;
     int send88SMPS(bool);
     bool handle88SMPSReport(const uint8_t*,size_t);
+
+    /* 1.0.17 diagnostics: register snapshot published as an IORegistry
+     * property (RTWSnap_<tag>) so a cold-plug and a post-reboot attach can be
+     * diffed with `ioreg -l -w0 | grep RTWSnap`. Read-only, no behaviour. */
+    void snapshot88(const char*tag,bool full=true);
+    bool r88SnapAuth_=false,r88SnapStall_=false;
+    uint8_t r88BootSeq_=0;

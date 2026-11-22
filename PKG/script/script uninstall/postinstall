@@ -20,5 +20,10 @@ rm -rf /Volumes/ESP/EFI/OC/kexts/macOS-RTL-WIFI.kext
 rm -rf /Volumes/ESP/EFI/CLOVER/kexts/Other/macOS-RTL-WIFI.kext
 # Remove link to the partition that contain the EFI folder
 rm -rf "${DEST_VOL}"/EFIROOTDIR
-rm -rf "/Library/Application Support/WLAN"
+killall -c RTLWiFiBar
+rm -rf "/Applications/RTLWiFiBar.app"
+rm -rf ~/Library/"Application Support"/RTLWiFiBar
+rm -rf ~/Library/"Application Support"/RTLWiFiBar.instance.lock
+rm -rf ~/Library/Logs/RTLWiFiBar.log
+rm -rf ~/Library/Preferences/com.rtlwifi.RTLWiFiBar.plist
 echo "Uninstall Complete."
