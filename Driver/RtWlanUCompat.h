@@ -134,6 +134,11 @@ typedef struct RTWlanUOidFrame {
 #define RTWLANU_SID_WPA_KEY            0xFF010305u
 #define RTWLANU_SID_ASSOC_TRIGGER      0xFF030004u
 #define RTWLANU_SID_HIBERNATE_MODE     0xFF01041Cu
+/* 1.1.2 (RTLWiFiBar "Disconnect USB WiFi"): the NDIS OID_802_11_DISASSOCIATE
+ * value. Leaves the network (DISASSOC to the AP), stops the station and
+ * erases the profile - RTW_CONTROL_LEAVE. A later join or scan brings the
+ * station back up. No payload. */
+#define RTWLANU_SID_DISASSOCIATE       0x0D010115u
 /* WirelessAssociate stores the join target through the very constant it
  * queries (decoded §8: 0xFF01041B is used query+set on the association
  * path, unlike the UI-level 0xFF070102 SetNetworkName path). */

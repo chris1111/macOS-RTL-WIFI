@@ -40,3 +40,7 @@
 "Joining \"%@\" - not connected yet%@" = "“%@” ağına bağlanılıyor - henüz bağlı değil%@";
 "Dongle ready - not connected%@" = "Dongle hazır - bağlı değil%@";
 " (driver %@)" = " (sürücü %@)";
+"Disconnect USB WiFi" = "USB Wi-Fi Bağlantısını Kes";
+"Reconnect USB WiFi" = "USB Wi-Fi'ye Yeniden Bağlan";
+"USB WiFi disconnected" = "USB Wi-Fi bağlantısı kesildi";
+"Disconnect needs the updated driver - reinstall the kext" = "Bağlantıyı kesmek için güncel sürücü gerekir - kext'i yeniden yükleyin";

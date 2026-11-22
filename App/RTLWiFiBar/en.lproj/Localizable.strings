@@ -40,3 +40,7 @@
 "Joining \"%@\" - not connected yet%@" = "Joining \"%@\" - not connected yet%@";
 "Dongle ready - not connected%@" = "Dongle ready - not connected%@";
 " (driver %@)" = " (driver %@)";
+"Disconnect USB WiFi" = "Disconnect USB WiFi";
+"Reconnect USB WiFi" = "Reconnect USB WiFi";
+"USB WiFi disconnected" = "USB WiFi disconnected";
+"Disconnect needs the updated driver - reinstall the kext" = "Disconnect needs the updated driver - reinstall the kext";

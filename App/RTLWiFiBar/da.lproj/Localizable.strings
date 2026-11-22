@@ -40,3 +40,7 @@
 "Joining \"%@\" - not connected yet%@" = "Tilslutter til “%@” - endnu ikke tilsluttet%@";
 "Dongle ready - not connected%@" = "Dongle klar - ikke tilsluttet%@";
 " (driver %@)" = " (driver %@)";
+"Disconnect USB WiFi" = "Afbryd USB-wi-fi";
+"Reconnect USB WiFi" = "Genopret USB-wi-fi";
+"USB WiFi disconnected" = "USB-wi-fi afbrudt";
+"Disconnect needs the updated driver - reinstall the kext" = "Afbrydelse kræver den opdaterede driver - geninstaller kext";

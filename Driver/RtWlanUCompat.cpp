@@ -833,6 +833,21 @@ static IOReturn oidSet(RTWUSBController* controller, RTWlanUOidFrame* frame) {
     case RTWLANU_SID_ASSOC_TRIGGER:
         frame->retLen = 0;
         return performJoin(controller);
+    case RTWLANU_SID_DISASSOCIATE: {
+        /* 1.1.2: user "Disconnect USB WiFi". Drop the pending join stream
+         * first so a stray auth/key set can never auto-join again, then
+         * leave: softLeave() says goodbye to the AP and erases the profile;
+         * the chip stays powered (a stopped chip latched core_error on the
+         * next calibration tick - field log 2026-11-22 15:04). */
+        resetJoin(&g_joinState);
+        size_t outLen = sizeof(RTWControlReply);
+        uint8_t reply[16];
+        IOReturn r = controlCall(controller, RTW_CONTROL_LEAVE, reply, &outLen);
+        IOLog("RtWlanUCompat: disassociate (user disconnect) -> 0x%x\n", r);
+        frame->retLen = 0;
+        if (r != kIOReturnSuccess) frame->status = r;
+        return r;
+    }
     case RTWLANU_SID_WEP_KEY:
         /* WEP is not supported by the RTWControl v1 JOIN contract; answer
          * success without state so the utility keeps operating. */

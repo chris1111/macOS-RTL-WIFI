@@ -19,6 +19,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface RTWDriverStatus ()
 @property (nonatomic, assign, readwrite) BOOL driverReachable;
 @property (nonatomic, assign, readwrite) BOOL linked;
+@property (nonatomic, assign, readwrite) BOOL securing;
 @property (nonatomic, copy, readwrite, nullable) NSString *ssid;
 @property (nonatomic, assign, readwrite) uint32_t channel;
 @property (nonatomic, assign, readwrite) int32_t rssiPercent;

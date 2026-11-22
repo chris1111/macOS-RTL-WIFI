@@ -40,3 +40,7 @@
 "Joining \"%@\" - not connected yet%@" = "Ansluter till ”%@” - inte ansluten än%@";
 "Dongle ready - not connected%@" = "Dongel redo - inte ansluten%@";
 " (driver %@)" = " (drivrutin %@)";
+"Disconnect USB WiFi" = "Koppla från USB-wifi";
+"Reconnect USB WiFi" = "Återanslut USB-wifi";
+"USB WiFi disconnected" = "USB-wifi frånkopplat";
+"Disconnect needs the updated driver - reinstall the kext" = "Frånkoppling kräver den uppdaterade drivrutinen - installera om kext";

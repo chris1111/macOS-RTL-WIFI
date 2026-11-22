@@ -21,6 +21,10 @@
 #import "RTWLog.h"
 #import <IOKit/IOKitLib.h>
 #import <string.h>
+#import <ifaddrs.h>
+#import <net/if.h>
+#import <netinet/in.h>
+#import <arpa/inet.h>
 
 NSString * const RTWDriverErrorDomain = @"com.rtlwifi.RTLWiFiBar.driver";
 
@@ -195,6 +199,7 @@ NSString * const RTWDriverErrorDomain = @"com.rtlwifi.RTLWiFiBar.driver";
 @property (nonatomic, readwrite) NSTimeInterval lastLoggedErrorAt;
 /* Private plumbing - ARC needs every selector visible before use. */
 - (void)recordError:(RTWDriverError)code detail:(NSString *)detail;
+- (BOOL)readDiagNumber:(NSString *)key value:(uint64_t *)value;
 - (BOOL)oidQuery:(uint32_t)oid
            reply:(RTWCompatOidFrame *)outFrame
           detail:(NSString * _Nullable * _Nullable)errorDetail;
@@ -615,6 +620,23 @@ NSString * const RTWDriverErrorDomain = @"com.rtlwifi.RTLWiFiBar.driver";
         }
     }
 
+    /* 8.8.5: the kext answers "linked" as soon as net80211 reaches RUN, and
+     * RUN comes BEFORE the WPA 4-way handshake. Field log 2026-11-22 11:11
+     * (RTL8821AU, 5 GHz): the menu read connected while
+     * RTWDiagWPASupplicantState=1, no EAPOL received and the port closed -
+     * no page could load and Rejoin was greyed out. On a protected network
+     * the link counts only once the port is valid. The status OID above has
+     * just refreshed these registry values (the kext publishes them on every
+     * OID call). A kext that does not publish them keeps the old behaviour. */
+    if (status.linked) {
+        uint64_t rsnOn = 0, portValid = 0;
+        if ([self readDiagNumber:@"RTWDiagWPARSNEnabled" value:&rsnOn] && rsnOn != 0 &&
+            [self readDiagNumber:@"RTWDiagWPAPortValid" value:&portValid] && portValid == 0) {
+            status.linked = NO;
+            status.securing = YES;
+        }
+    }
+
     if (status.linked) {
         RTWCompatOidFrame ssidReply;
         if ([self oidQuery:RTWCOMPAT_QID_CURRENT_SSID reply:&ssidReply detail:&detail]
@@ -688,6 +710,87 @@ NSString * const RTWDriverErrorDomain = @"com.rtlwifi.RTLWiFiBar.driver";
         CFRelease(value);
     }
     return reason;
+}
+
+/* 8.8.5: one RTWDiag* number from the open driver service. NO when the
+ * client is closed or the kext does not publish the key. The kext writes
+ * every key it knows, zeros included (DiagnosticPublishPolicy.hpp), so a
+ * missing key means an older kext, not a zero. */
+- (BOOL)readDiagNumber:(NSString *)key value:(uint64_t *)value {
+    [_ioLock lock];
+    io_service_t service = _service;
+    if (service == IO_OBJECT_NULL) {
+        [_ioLock unlock];
+        return NO;
+    }
+    CFTypeRef raw = IORegistryEntryCreateCFProperty(service, (__bridge CFStringRef)key,
+                                                    kCFAllocatorDefault, 0);
+    [_ioLock unlock];
+    if (!raw) return NO;
+    BOOL ok = NO;
+    if (CFGetTypeID(raw) == CFNumberGetTypeID()) {
+        int64_t number = 0;
+        if (CFNumberGetValue((CFNumberRef)raw, kCFNumberSInt64Type, &number)) {
+            if (value) *value = (uint64_t)number;
+            ok = YES;
+        }
+    }
+    CFRelease(raw);
+    return ok;
+}
+
+- (NSString *)diagnosticValuesForKeys:(NSArray<NSString *> *)keys {
+    NSMutableArray<NSString *> *parts = [NSMutableArray arrayWithCapacity:keys.count];
+    for (NSString *key in keys) {
+        uint64_t number = 0;
+        NSString *shortKey = [key hasPrefix:@"RTWDiag"] ? [key substringFromIndex:7] : key;
+        if ([self readDiagNumber:key value:&number]) {
+            [parts addObject:[NSString stringWithFormat:@"%@=%llu", shortKey,
+                              (unsigned long long)number]];
+        } else {
+            [parts addObject:[NSString stringWithFormat:@"%@=-", shortKey]];
+        }
+    }
+    return [parts componentsJoinedByString:@" "];
+}
+
+- (nullable NSString *)interfaceIPv4:(NSString * _Nullable * _Nullable)bsdName {
+    if (bsdName) *bsdName = nil;
+    /* The IOEthernetInterface below the controller carries "BSD Name". */
+    [_ioLock lock];
+    io_service_t service = _service;
+    CFTypeRef nameRef = NULL;
+    if (service != IO_OBJECT_NULL) {
+        nameRef = IORegistryEntrySearchCFProperty(service, kIOServicePlane, CFSTR("BSD Name"),
+                                                  kCFAllocatorDefault, kIORegistryIterateRecursively);
+    }
+    [_ioLock unlock];
+    if (!nameRef) return nil;
+    NSString *name = nil;
+    if (CFGetTypeID(nameRef) == CFStringGetTypeID()) name = [(__bridge NSString *)nameRef copy];
+    CFRelease(nameRef);
+    if (!name.length) return nil;
+    if (bsdName) *bsdName = name;
+
+    struct ifaddrs *list = NULL;
+    if (getifaddrs(&list) != 0 || !list) return nil;
+    NSString *address = nil;
+    const char *wanted = name.UTF8String;
+    for (struct ifaddrs *it = list; it; it = it->ifa_next) {
+        if (!it->ifa_name || !it->ifa_addr || it->ifa_addr->sa_family != AF_INET) continue;
+        if (strcmp(it->ifa_name, wanted) != 0) continue;
+        const struct sockaddr_in *sin = (const struct sockaddr_in *)(const void *)it->ifa_addr;
+        uint32_t host = ntohl(sin->sin_addr.s_addr);
+        if ((host & 0xFFFF0000u) == 0xA9FE0000u) continue; /* 169.254/16 self-assigned */
+        if (host == 0) continue;
+        char text[INET_ADDRSTRLEN] = {0};
+        if (inet_ntop(AF_INET, &sin->sin_addr, text, sizeof(text))) {
+            address = [NSString stringWithUTF8String:text];
+            break;
+        }
+    }
+    freeifaddrs(list);
+    return address;
 }
 
 #pragma mark Scan
@@ -803,6 +906,11 @@ NSString * const RTWDriverErrorDomain = @"com.rtlwifi.RTLWiFiBar.driver";
     }
     if (errorDetail) *errorDetail = nil;
     return YES;
+}
+
+- (BOOL)disconnectFromNetwork:(NSString * _Nullable * _Nullable)errorDetail {
+    return [self oidSet:RTWCOMPAT_SID_DISASSOCIATE payload:NULL length:0
+                 detail:errorDetail];
 }
 
 /* 8.7.20: read the kext's diagnostic properties straight from the IORegistry

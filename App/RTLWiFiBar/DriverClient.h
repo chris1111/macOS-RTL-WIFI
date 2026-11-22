@@ -33,7 +33,10 @@ NS_ASSUME_NONNULL_BEGIN
 /* Live driver snapshot. */
 @interface RTWDriverStatus : NSObject
 @property (nonatomic, assign, readonly) BOOL driverReachable; /* user client open */
-@property (nonatomic, assign, readonly) BOOL linked;          /* net80211 RUN */
+@property (nonatomic, assign, readonly) BOOL linked;          /* net80211 RUN + WPA keys installed */
+/* 8.8.5: associated (net80211 RUN) but the WPA 4-way handshake has not
+ * installed the keys yet - no data can pass. linked is NO while this is YES. */
+@property (nonatomic, assign, readonly) BOOL securing;
 @property (nonatomic, copy, readonly, nullable) NSString *ssid;
 @property (nonatomic, assign, readonly) uint32_t channel;
 @property (nonatomic, assign, readonly) int32_t rssiPercent;  /* 0..100, 0 unknown */
@@ -86,6 +89,11 @@ extern NSString * const RTWDriverErrorDomain;
          passphrase:(nullable NSString *)passphrase
               error:(NSString * _Nullable * _Nullable)errorDetail;
 
+/* 8.8.5: "Disconnect USB WiFi" - the kext leaves the network, stops the
+ * station and erases its profile (kext 1.1.2 compat OID 0x0D010115). An
+ * older kext refuses the OID: NO with the error in errorDetail. */
+- (BOOL)disconnectFromNetwork:(NSString * _Nullable * _Nullable)errorDetail;
+
 /* Diagnostics ------------------------------------------------------------- */
 - (nullable NSString *)copyDriverVersion:(NSString * _Nullable * _Nullable)errorDetail;
 /* v8.7.3: last deauth/disassoc reason the kext recorded (its IORegistry
@@ -97,6 +105,13 @@ extern NSString * const RTWDriverErrorDomain;
 /* 8.7.20: one-line dump of the kext's diagnostic IORegistry properties
  * (RTWDiag*, RTWSnap_*, RTWEfuse88E, RTWResidual, ...) for the log. */
 - (NSString *)diagnosticSummary;
+/* 8.8.5: "Key=value" for exactly these RTWDiag keys, zeros included
+ * ("Key=-" when the driver does not publish it). Short, for link checks. */
+- (NSString *)diagnosticValuesForKeys:(NSArray<NSString *> *)keys;
+/* 8.8.5: the dongle's BSD interface (en2, en7, ...) and its routable IPv4
+ * address. Returns nil when the interface has no IPv4 or only a
+ * self-assigned 169.254.x.x one. bsdName gets the interface name if known. */
+- (nullable NSString *)interfaceIPv4:(NSString * _Nullable * _Nullable)bsdName;
 /* v8.7.14: net80211 station state + beacon age while a join is in flight
  * (kext 1.0.8 OID 0x00010115). States: 0 INIT, 1 SCAN, 2 AUTH, 3 ASSOC,
  * 4 RUN. Returns NO when the driver build predates the OID or the call

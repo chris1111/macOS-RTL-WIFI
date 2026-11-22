@@ -2004,6 +2004,38 @@ void RTWUSBController::quiesce(bool erase) {
     linkActivePosted_=false;
     core_.sc_ic.ic_if.if_link_state=LINK_STATE_DOWN;
 }
+/* 1.1.2 "Disconnect USB WiFi" (RTLWiFiBar): leave the network WITHOUT
+ * powering the chip down. Field log 2026-11-22 15:04 (MAC 80:af:ca:d3:e4:08):
+ * the first version called quiesce(true), which stops the MAC and leaves
+ * calibTimer_ running; the next 2 s tick then touched the stopped chip, the
+ * tick failed (RTWDiagCoreError=6) and latched core_error, so every later
+ * call - the Reconnect join included - answered NotReady (0xe00002d8) until
+ * a session rescue re-enumerated the dongle. A real join never hits this
+ * because executeJoinTail runs quiesce() and enableStation() back to back.
+ * Here the chip stays up: say goodbye to the AP (same INIT transition
+ * quiesce() uses, real reason, chip alive), drop the carrier, erase the
+ * profile so nothing auto-joins; the station idles in INIT until a join or
+ * scan arrives. */
+void RTWUSBController::softLeave() {
+    if(stopping_)return;
+    if(attached_&&present_&&!sleeping_&&running_&&
+       usbError_==kIOReturnSuccess&&!core_.core_error&&
+       core_.sc_newstate&&core_.sc_ic.ic_bss){
+        const int st=core_.sc_ic.ic_state;
+        if(st==IEEE80211_S_RUN||st==IEEE80211_S_ASSOC||st==IEEE80211_S_AUTH)
+            (void)core_.sc_newstate(&core_.sc_ic,IEEE80211_S_INIT,
+                IEEE80211_REASON_ASSOC_LEAVE);
+    }
+    cancelWpaRecovery();
+    resetRateControl();
+    if(auto*queue=getOutputQueue())queue->flush();
+    super::setLinkStatus(kIONetworkLinkValid);
+    if(attached_)ifq_flush(&core_.sc_ic.ic_if.if_snd);
+    resetDFSStation(true);
+    eraseProfile();
+    linkActivePosted_=false;
+    core_.sc_ic.ic_if.if_link_state=LINK_STATE_DOWN;
+}
 IOReturn RTWUSBController::enableStation() {
     if(!attached_||!present_||sleeping_||usbError_!=kIOReturnSuccess||core_.core_error||!netif_||!stats_){
         /* 1.0.6 reboot-2 wedge cure: after the first failed bring-up the
@@ -2406,7 +2438,7 @@ IOReturn RTWUSBController::handleControl(ControlCall*call) {
     if(call->selector==RTW_CONTROL_SCAN_RESULTS){scanResults(static_cast<RTWControlScanResults*>(call->output));return kIOReturnSuccess;}
     if(call->selector==RTW_CONTROL_CHANNEL_MAP){channelMap(static_cast<RTWControlChannelMap*>(call->output));return kIOReturnSuccess;}
     auto*reply=static_cast<RTWControlReply*>(call->output);reply->version=RTW_CONTROL_VERSION;
-    if(call->selector==RTW_CONTROL_LEAVE){quiesce(true);return kIOReturnSuccess;}
+    if(call->selector==RTW_CONTROL_LEAVE){softLeave();return kIOReturnSuccess;}
     if(!attached_||!present_||sleeping_||usbError_!=kIOReturnSuccess||core_.core_error){
         considerSessionRescue();/* 1.0.9: a transport latched dead re-plugs itself */
         return kIOReturnNotReady;

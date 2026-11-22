@@ -40,3 +40,7 @@
 "Joining \"%@\" - not connected yet%@" = "正在连接“%@” - 尚未连接%@";
 "Dongle ready - not connected%@" = "适配器就绪 - 未连接%@";
 " (driver %@)" = " (驱动程序 %@)";
+"Disconnect USB WiFi" = "断开 USB Wi-Fi";
+"Reconnect USB WiFi" = "重新连接 USB Wi-Fi";
+"USB WiFi disconnected" = "USB Wi-Fi 已断开";
+"Disconnect needs the updated driver - reinstall the kext" = "断开连接需要更新的驱动程序 - 请重新安装 kext";

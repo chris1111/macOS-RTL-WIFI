@@ -268,6 +268,18 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
  * settle clock. */
 @property (assign) NSTimeInterval driverReachableSince;
 @property (assign) BOOL autoRejoinSettleLogged;
+/* 8.8.5: post-connect address check (poll queue only). 10 s after the link
+ * comes up the dongle's interface must hold a routable IPv4; the result is
+ * logged with the DHCP/TX counters, and Rejoin stays clickable while the
+ * link has no address. */
+@property (assign) BOOL linkAddressChecked;
+@property (assign) BOOL linkHasNoAddress;
+@property (assign) NSTimeInterval linkAddressLastCheck;
+@property (assign) BOOL securingLogged;
+/* 8.8.5: "Disconnect USB WiFi" - the user took the dongle off the network.
+ * Nothing joins or scans by itself until Reconnect (or a network picked in
+ * the menu). Session only: the next launch rejoins the saved network. */
+@property (assign) BOOL userDisconnected;
 /* v8.7.8: the v8.7.4 boot-loader offer state (driverMissingSince,
  * bootSetupPrompted, bootSetupRunning) is gone together with the
  * "Enable Driver at Boot" flow - the app never runs osascript. */
@@ -286,7 +298,10 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
 - (void)updateIconBody:(nullable RTWDriverStatus *)status;
 - (NSString *)statusTooltip:(nullable RTWDriverStatus *)status;
 - (void)performScan;
+- (void)autoRescan;                          /* 8.8.5: silent rescan for automatic paths */
+- (void)toggleUSBWifi:(nullable NSMenuItem *)sender; /* 8.8.5: Disconnect / Reconnect USB WiFi */
 - (void)armAutoRejoinAfterDrop:(NSTimeInterval)now;  /* v8.8.4 */
+- (void)checkLinkAddress:(nullable RTWDriverStatus *)status now:(NSTimeInterval)now; /* 8.8.5 */
 - (NSString *)linkDropReasonNote;           /* v8.7.3: deauth-reason log note */
 - (NSString *)decodeDeauthReason:(uint32_t)reason;
 - (NSString *)nameForJoinState:(uint32_t)state; /* v8.7.14 progress names */
@@ -458,6 +473,15 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
 
 - (void)pollTickBody {
     if (![self.driver isConnected]) {
+        /* 8.8.5: no user client = the dongle is gone (unplugged, kext rescue,
+         * client reopen). Restart the settle clock HERE: the early return
+         * below skips the settle-clock code further down, so an unplug was
+         * never noticed - on re-plug the 5 s settle rescan and the "dongle is
+         * back" survey never fired and the rejoin waited 20 s for the next
+         * survey (field log 2026-11-22 13:52: re-plugged 13:52:51, linked
+         * only 13:53:15). */
+        self.driverReachableSince = 0;
+        self.autoRejoinSettleLogged = NO;
         NSString *detail = nil;
         BOOL ok = [self.driver openConnection:&detail];
         if (!ok) {
@@ -518,12 +542,14 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
      * the cured dongle actually reconnects instead of sitting red. */
     if (self.awaitingDriverReturn && status && status.driverReachable) {
         self.awaitingDriverReturn = NO;
-        if (!status.linked && !self.joinInFlightSsid.length && self.rescueRejoinsUsed < 2) {
+        if (!status.linked && !status.securing && !self.userDisconnected &&
+            !self.joinInFlightSsid.length && self.rescueRejoinsUsed < 2) {
             NSString *rejoin = [self.profiles mostRecentlyUsedSsid];
             if (rejoin.length && !self.autoRejoinArmedSsid.length) {
                 ++self.rescueRejoinsUsed;
                 self.autoRejoinArmedSsid = rejoin;
                 self.autoRejoinScansWaited = 0;
+                self.autoRejoinSettleLogged = NO; /* 8.8.5: fresh arm, fresh settle rescan */
                 RTWLog(@"driver returned after a rescue - auto-rejoin re-armed for \"%@\" (%ld/2 this session)",
                        rejoin, (long)self.rescueRejoinsUsed);
             }
@@ -534,9 +560,29 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
 
     /* v8.7.19: settle clock for the auto-rejoin gate. */
     if (status && status.driverReachable) {
-        if (self.driverReachableSince <= 0) self.driverReachableSince = now;
+        if (self.driverReachableSince <= 0) {
+            self.driverReachableSince = now;
+            /* 8.8.5: the dongle just came back (re-plug, kext rescue, client
+             * reopen) and a rejoin is armed - survey NOW instead of waiting
+             * for the 20 s freshness cadence. Field log 2026-11-22 13:38
+             * (RTL8821AU): back at 13:38:10, first survey only at 13:38:19.
+             * Only when the cadence below would skip it (a survey finished
+             * less than 20 s ago), so this never doubles a scan. That survey
+             * starts the 5 s settle wait, which then rescans and joins. */
+            if (self.autoRejoinArmedSsid.length && !status.linked && !status.securing &&
+                !scanInFlight && !self.joinInFlightSsid.length &&
+                lastScanFinished > 0 && now - lastScanFinished < 20.0) {
+                RTWLog(@"dongle is back - surveying now for \"%@\" (no 20 s wait)",
+                       self.autoRejoinArmedSsid);
+                dispatch_async(self.workQueue, ^{ [self performScan]; });
+            }
+        }
     } else {
         self.driverReachableSince = 0;
+        /* 8.8.5: the settle clock restarts when the dongle comes back, so its
+         * 5 s settle rescan must be scheduled again too (an unplug during the
+         * settle wait left this YES and the rejoin waited 20 s for a survey). */
+        self.autoRejoinSettleLogged = NO;
     }
 
     /* Link transition tracking (v8.7.2). A link that drops seconds after
@@ -550,6 +596,9 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
         if (status.linked && !self.linkWasUp) {
             self.linkWasUp = YES;
             self.lastLinkUpAt = now;
+            self.linkAddressChecked = NO;   /* 8.8.5: fresh address check */
+            self.linkHasNoAddress = NO;
+            self.linkAddressLastCheck = 0;
             /* v8.7.3: remember the deauth-reason registry value while this
              * link lived. On drop, a DIFFERENT value means the AP ended
              * the association; an unchanged one means a local reset. */
@@ -558,11 +607,19 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
             self.linkWasUp = NO;
             NSTimeInterval upFor = now - self.lastLinkUpAt;
             self.lastLinkUpAt = 0;
+            self.linkHasNoAddress = NO;
             NSString *why = [self linkDropReasonNote];
             if (upFor < 30.0) {
-                RTWLog(@"link flapped: up only %.0f s %@ - pick the network in Networks to connect again",
-                       upFor + 0.5, why);
+                RTWLog(@"link flapped: up only %.0f s %@", upFor + 0.5, why);
                 RTWLog(@"driver diagnostics at flap: %@", [self.driver diagnosticSummary]);
+                /* 8.8.5: a flap is rejoined by itself too, inside the same
+                 * 6-per-hour budget as a drop, so a flapping AP can never turn
+                 * this into a join loop. Field log 2026-11-22 13:07 (Cudy,
+                 * RTL8822BU, 5 GHz): the AP sent deauth reason 7 after 16 s
+                 * and the app only scanned for 15 minutes. A wrong password
+                 * never gets here: the link only counts as up once the WPA
+                 * keys are installed. */
+                [self armAutoRejoinAfterDrop:now];
             } else {
                 RTWLog(@"link dropped after %.0f s %@", upFor + 0.5, why);
                 RTWLog(@"driver diagnostics at drop: %@", [self.driver diagnosticSummary]);
@@ -575,6 +632,22 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
             }
         }
     }
+
+    /* 8.8.5: associated but the WPA keys are not installed - say so once per
+     * episode (the kext's own WPA recovery is working on it), then run the
+     * post-connect address check while the link is up. */
+    if (status && status.driverReachable && status.securing) {
+        if (!self.securingLogged) {
+            self.securingLogged = YES;
+            RTWLog(@"associated - waiting for the WPA handshake before the link counts as up (%@)",
+                   [self.driver diagnosticValuesForKeys:@[@"RTWDiagWPASupplicantState",
+                       @"RTWDiagWPAEAPOLReceived", @"RTWDiagWPAEAPOLBadMIC",
+                       @"RTWDiagWPARecoveryState", @"RTWDiagWPARecoveryRemainingMS"]]);
+        }
+    } else {
+        self.securingLogged = NO;
+    }
+    [self checkLinkAddress:status now:now];
 
     /* Survey freshness while unlinked: the boot-time survey often sees
      * almost nothing while the radio warms up (field log 2026-11-16
@@ -595,7 +668,10 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
      * scan behind one still queued or running: in the same capture two
      * ticks passed this gate 6 ms apart, because lastScanFinished only
      * stamps when a scan FINISHES. */
-    if (status && status.driverReachable && !status.linked &&
+    /* 8.8.5: never while securing either - a scan restarts the STA sweep and
+     * would kill the WPA handshake the kext is finishing. */
+    if (status && status.driverReachable && !status.linked && !status.securing &&
+        !self.userDisconnected && /* 8.8.5: a scan would bring the radio back up */
         !scanInFlight && !self.joinInFlightSsid.length &&
         (lastScanFinished <= 0 || now - lastScanFinished >= 20.0)) {
         /* v8.7.6: a never-finished scan counts as due - after the
@@ -630,6 +706,9 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
         state = status.linked ? RTWIconStateLinked : RTWIconStateIdle;
         rssi = status.rssiPercent;
     }
+    /* 8.8.5: Disconnect USB WiFi shows the crossed-out Wi-Fi glyph, like the
+     * stock Realtek StatusBarApp. */
+    if (self.userDisconnected) state = RTWIconStateMissing;
     self.statusItem.button.image = [RTWSignalIcon iconForState:state rssiPercent:rssi];
     self.statusItem.button.toolTip = [self statusTooltip:status];
 }
@@ -638,15 +717,16 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
     if (!status || !status.driverReachable) {
         return [NSString stringWithFormat:@"RTLWiFiBar - %@", status.lastError ?: NSLocalizedString(@"driver unreachable", nil)];
     }
+    if (self.userDisconnected) return [NSString stringWithFormat:@"RTLWiFiBar - %@", NSLocalizedString(@"USB WiFi disconnected", nil)];
     if (status.linked) {
         return [NSString stringWithFormat:NSLocalizedString(@"%@ - channel %u, %d dBm%@", nil),
                 status.ssid ?: NSLocalizedString(@"connected", nil),
                 (unsigned)status.channel, status.rssiPercent / 2 - 100,
                 status.driverVersion ? [NSString stringWithFormat:NSLocalizedString(@" (driver %@)", nil), status.driverVersion] : @""];
     }
-    if (self.joinInFlightSsid.length) {
+    if (self.joinInFlightSsid.length || (status.securing && self.savedSsid.length)) {
         return [NSString stringWithFormat:NSLocalizedString(@"Joining \"%@\" - not connected yet%@", nil),
-                self.joinInFlightSsid,
+                self.joinInFlightSsid.length ? self.joinInFlightSsid : self.savedSsid,
                 status.driverVersion ? [NSString stringWithFormat:NSLocalizedString(@" (driver %@)", nil), status.driverVersion] : @""];
     }
     return [NSString stringWithFormat:NSLocalizedString(@"Dongle ready - not connected%@", nil),
@@ -928,8 +1008,9 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
  *  - gives up after five surveys never saw it (~100 s of the 20 s
  *    freshness cadence) and says so out loud;
  *  - v8.8.4: a mid-session drop of a link that lived 30 s or more re-arms
- *    it (armAutoRejoinAfterDrop:, max 6 per rolling hour); flaps stay manual. */
+ *    it (armAutoRejoinAfterDrop:, max 6 per rolling hour); 8.8.5: flaps too. */
 - (void)maybeFireStartupAutoRejoinWithRecords:(NSArray<RTWNetworkEntry *> *)records {
+    if (self.userDisconnected) return; /* 8.8.5: never rejoin after Disconnect USB WiFi */
     NSString *ssid = self.autoRejoinArmedSsid;
     if (!ssid.length) return;
     if (![self.profiles hasProfileForSsid:ssid]) {
@@ -951,6 +1032,9 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
         return;
     }
     if (!status || !status.driverReachable) return; /* dongle not up yet - keep waiting */
+    /* 8.8.5: the kext is finishing a WPA handshake on its own - keep the arm
+     * and let it finish; a join submit now would restart the association. */
+    if (status.securing) return;
     /* v8.7.19: let the radio settle before the first join of this driver
      * instance. Deferring does NOT count toward the five-survey give-up. */
     {
@@ -968,7 +1052,7 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
                                 (int64_t)((kAutoRejoinSettleSeconds + 0.5) * NSEC_PER_SEC)),
                                dispatch_get_main_queue(), ^{
                     typeof(self) strongSelf = weakSelf;
-                    if (strongSelf && strongSelf.autoRejoinArmedSsid.length) [strongSelf rescanNow:nil];
+                    if (strongSelf && strongSelf.autoRejoinArmedSsid.length) [strongSelf autoRescan];
                 });
             }
             return;
@@ -1044,6 +1128,11 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
     if (!ssid.length) return;
     self.autoRejoinArmedSsid = nil;
     self.autoRejoinScansWaited = 0;
+    /* 8.8.5: an arm that stood down while still settling left this YES, and
+     * every later arm of the session then skipped its 5 s settle rescan and
+     * waited for the 20 s survey cadence instead (field log 2026-11-22
+     * 12:12: driver back at 12:12:15, no settle line, join only at 12:12:36). */
+    self.autoRejoinSettleLogged = NO;
     RTWLog(@"startup auto-rejoin stood down for %@ - %@", ssid, reason);
 }
 
@@ -1057,7 +1146,7 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
         case 1:  return @"scanning for the network";
         case 2:  return @"authenticating";
         case 3:  return @"associating / WPA handshake";
-        case 4:  return @"linked";
+        case 4:  return @"associated (RUN) - WPA keys next";
         default: return [NSString stringWithFormat:@"unknown state %u", (unsigned)state];
     }
 }
@@ -1073,7 +1162,7 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
             [parts addObject:@"the driver never reported any association progress"];
             break;
         case 4:
-            [parts addObject:@"the station reached RUN but the link never arrived here"];
+            [parts addObject:@"the station associated (RUN) but the WPA keys were never installed - the 4-way handshake did not finish"];
             break;
         case 3:
             [parts addObject:@"the AP accepted the association but the WPA 4-way handshake never completed"];
@@ -1116,8 +1205,9 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
  * a survey sees the saved network, runs the manual join path with its
  * monitor, and stands down when the user picks or forgets a network).
  * Bounded: at most 6 per rolling hour so an AP that keeps dropping us never
- * turns this into a join loop. Flaps (link up under 30 s) stay manual. */
+ * turns this into a join loop. 8.8.5: flaps (link up under 30 s) use it too. */
 - (void)armAutoRejoinAfterDrop:(NSTimeInterval)now {
+    if (self.userDisconnected) return; /* 8.8.5: the user disconnected on purpose */
     if (self.autoRejoinArmedSsid.length || self.joinInFlightSsid.length) return;
     NSString *ssid = [self.profiles mostRecentlyUsedSsid];
     if (!ssid.length || ![self.profiles hasProfileForSsid:ssid]) return;
@@ -1132,14 +1222,57 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
     ++self.dropRejoinsUsed;
     self.autoRejoinArmedSsid = ssid;
     self.autoRejoinScansWaited = 0;
+    self.autoRejoinSettleLogged = NO; /* 8.8.5: fresh arm, fresh settle rescan */
     RTWLog(@"link dropped mid-session - auto-rejoin armed for \"%@\" (%ld/6 this hour)",
            ssid, (long)self.dropRejoinsUsed);
     __weak typeof(self) weakSelf = self;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)),
                    dispatch_get_main_queue(), ^{
         typeof(self) strongSelf = weakSelf;
-        if (strongSelf && strongSelf.autoRejoinArmedSsid.length) [strongSelf rescanNow:nil];
+        if (strongSelf && strongSelf.autoRejoinArmedSsid.length) [strongSelf autoRescan];
     });
+}
+
+/* 8.8.5: the address check. Field log 2026-11-22 11:19-11:32 (RTL8821AU):
+ * the link stayed "up" for 13 minutes and pages never loaded, and the log
+ * could not say why - nothing was recorded after the connect line. 10 s
+ * after the link comes up, log the interface's IPv4 (or its absence) with
+ * the DHCP and data counters. Without an address, look again every 10 s
+ * and log once when it arrives. Never joins by itself: the kext already
+ * rebuilds a link whose DHCP stays unanswered (autoHealStuckDhcp,
+ * autoHealSilentLease) and the app must not fight it. Poll queue only. */
+- (void)checkLinkAddress:(nullable RTWDriverStatus *)status now:(NSTimeInterval)now {
+    if (!status || !status.driverReachable || !status.linked ||
+        !self.linkWasUp || self.lastLinkUpAt <= 0) return;
+    NSTimeInterval upFor = now - self.lastLinkUpAt;
+    BOOL firstCheck = !self.linkAddressChecked && upFor >= 10.0;
+    BOOL recheck = self.linkAddressChecked && self.linkHasNoAddress &&
+                   now - self.linkAddressLastCheck >= 10.0;
+    if (!firstCheck && !recheck) return;
+    self.linkAddressChecked = YES;
+    self.linkAddressLastCheck = now;
+
+    NSString *ifname = nil;
+    NSString *ip = [self.driver interfaceIPv4:&ifname];
+    if (ip.length) {
+        if (firstCheck) {
+            RTWLog(@"link check %.0f s after connect: %@ has IPv4 %@", upFor, ifname ?: @"?", ip);
+        } else {
+            RTWLog(@"link check: %@ got IPv4 %@ %.0f s after connect", ifname ?: @"?", ip, upFor);
+        }
+        self.linkHasNoAddress = NO;
+        return;
+    }
+    if (firstCheck) {
+        NSString *counters = [self.driver diagnosticValuesForKeys:@[
+            @"RTWDiagWPAPortValid", @"RTWDiagDhcpEpisodeDiscovers", @"RTWDiagDhcpEpisodeReplies",
+            @"RTWDiagTXDhcpSent", @"RTWDiagTXDhcpRepOK", @"RTWDiagTXDhcpDrops",
+            @"RTWDiagTXDataFrames", @"RTWDiagRXDataToUs", @"RTWDiagRXDataBcast"]];
+        RTWLog(@"link check %.0f s after connect: NO IPv4 on %@ (no DHCP lease, or only a self-assigned 169.254 address) - %@ - "
+               "the driver rebuilds the link by itself if the lease never comes; Rejoin stays available meanwhile",
+               upFor, ifname ?: @"the dongle interface", counters);
+    }
+    self.linkHasNoAddress = YES;
 }
 
 - (NSString *)linkDropReasonNote {
@@ -1202,6 +1335,17 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
     BOOL scanning = self.scanning;
     [self.stateLock unlock];
 
+    /* 0. 8.8.5: Disconnect / Reconnect USB WiFi on top, like the stock
+     *    Realtek StatusBarApp. Clickable while the dongle is reachable. */
+    NSMenuItem *usbToggle = [[NSMenuItem alloc] initWithTitle:
+        (self.userDisconnected ? NSLocalizedString(@"Reconnect USB WiFi", nil)
+                               : NSLocalizedString(@"Disconnect USB WiFi", nil))
+        action:@selector(toggleUSBWifi:) keyEquivalent:@""];
+    usbToggle.target = self;
+    usbToggle.enabled = (status != nil && status.driverReachable);
+    [menu addItem:usbToggle];
+    [menu addItem:[NSMenuItem separatorItem]];
+
     /* 1. Status lines. */
     NSMenuItem *statusItem = [[NSMenuItem alloc] initWithTitle:[self statusLine:status]
                                                         action:nil keyEquivalent:@""];
@@ -1260,7 +1404,11 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
             [NSString stringWithFormat:NSLocalizedString(@"Rejoin \"%@\" Now", nil), self.savedSsid]
             action:@selector(rejoinSavedNow:) keyEquivalent:@""];
         rejoin.target = self;
-        rejoin.enabled = (status != nil && status.driverReachable && !status.linked);
+        /* 8.8.5: also clickable while linked without an IPv4 address - the
+         * kext rebuilds a stuck data path on a re-join to the same network
+         * and leaves a healthy link untouched. */
+        rejoin.enabled = (status != nil && status.driverReachable &&
+                          (!status.linked || self.linkHasNoAddress));
         [menu addItem:rejoin];
     }
     NSString *forgetTarget = self.savedSsid;
@@ -1513,6 +1661,7 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
         if ([RTWDriverClient rtlUsbDonglePresent]) return NSLocalizedString(@"Dongle on USB - driver not loaded", nil);
         return NSLocalizedString(@"Dongle: Unplugged", nil);
     }
+    if (self.userDisconnected) return NSLocalizedString(@"USB WiFi disconnected", nil); /* 8.8.5 */
     if (self.scanning && !status.linked) return NSLocalizedString(@"Scanning…", nil);
     if (status.linked) {
         return [NSString stringWithFormat:NSLocalizedString(@"%@ - %d dBm, channel %u", nil),
@@ -1529,6 +1678,12 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
         }
         return [NSString stringWithFormat:NSLocalizedString(@"Joining \"%@\" - %ld s", nil),
                 self.joinInFlightSsid, (long)((now - self.joinStartedAt) + 0.5)];
+    }
+    /* 8.8.5: associated without a user join in flight (the kext's own WPA
+     * recovery, a rekey) - not connected yet, and never "Connected". */
+    if (status.securing && self.savedSsid.length) {
+        return [NSString stringWithFormat:NSLocalizedString(@"Joining \"%@\" - not connected yet%@", nil),
+                self.savedSsid, @""];
     }
     /* v8.7.14: the honest failure report stays on the menu until the
      * next join or the next link replaces it. */
@@ -1565,6 +1720,73 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
 }
 
 #pragma mark Actions
+
+/* 8.8.5: Disconnect / Reconnect USB WiFi (the stock Realtek StatusBarApp
+ * item). Disconnect: the kext leaves the network and stops the station
+ * (kext 1.1.2 OID), the icon shows the crossed-out glyph, and nothing joins
+ * or scans by itself. Reconnect: rejoins the saved network right away with
+ * the saved password - the same path as Rejoin. */
+- (void)toggleUSBWifi:(nullable NSMenuItem *)sender {
+    (void)sender;
+    if (!self.userDisconnected) {
+        self.userDisconnected = YES;
+        [self standDownStartupAutoRejoin:@"you clicked Disconnect USB WiFi"];
+        [self clearPendingNetworkSave];
+        [self clearJoinFlightWatch];
+        self.lastJoinFailureNote = nil;
+        RTWLog(@"Disconnect USB WiFi clicked - leaving the network; nothing reconnects by itself until Reconnect USB WiFi");
+        [self updateIcon:self.lastStatus];
+        dispatch_async(self.workQueue, ^{
+            NSString *detail = nil;
+            if ([self.driver disconnectFromNetwork:&detail]) {
+                RTWLog(@"driver accepted the disconnect");
+                /* A kext older than 1.1.2 ACCEPTS and ignores unknown set
+                 * OIDs, so "ok" alone proves nothing: if the link is still
+                 * up 3 s later the driver did not leave - undo and say so. */
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3 * NSEC_PER_SEC)),
+                               dispatch_get_main_queue(), ^{
+                    if (!self.userDisconnected || !self.lastStatus.linked) return;
+                    RTWLog(@"the link is still up 3 s after Disconnect - the installed kext ignores the disconnect command (needs kext 1.1.2 or newer)");
+                    self.userDisconnected = NO;
+                    [self updateIcon:self.lastStatus];
+                    [self alert:NSLocalizedString(@"Disconnect USB WiFi", nil)
+                           text:NSLocalizedString(@"Disconnect needs the updated driver - reinstall the kext", nil)];
+                });
+                return;
+            }
+            /* An older kext has no disconnect OID: say so and undo, so the
+             * menu never claims "disconnected" over a live link. */
+            RTWLog(@"disconnect refused by the driver (%@) - Disconnect USB WiFi needs kext 1.1.2 or newer",
+                   detail ?: @"?");
+            dispatch_async(dispatch_get_main_queue(), ^{
+                self.userDisconnected = NO;
+                [self updateIcon:self.lastStatus];
+                [self alert:NSLocalizedString(@"Disconnect USB WiFi", nil)
+                       text:NSLocalizedString(@"Disconnect needs the updated driver - reinstall the kext", nil)];
+            });
+        });
+        return;
+    }
+    self.userDisconnected = NO;
+    RTWLog(@"Reconnect USB WiFi clicked");
+    [self updateIcon:self.lastStatus];
+    if (self.savedSsid.length && [self.profiles hasProfileForSsid:self.savedSsid]) {
+        [self rejoinSavedNow:nil]; /* direct join with the saved password */
+    } else {
+        [self autoRescan]; /* no saved network: refresh the list, the user picks one */
+    }
+}
+
+/* 8.8.5: the automatic rejoin paths (settle wait, link drop/flap) used to
+ * call rescanNow: - the menu action, which shows a modal "Driver not
+ * reachable" alert when the dongle is gone. Unplugging the dongle therefore
+ * popped that alert 2 s later (field report 2026-11-22 13:54). Automatic
+ * rescans are silent: performScan already logs "scan aborted" when no driver
+ * is there, and the poll tick surveys again the moment the dongle is back. */
+- (void)autoRescan {
+    RTWLog(@"rescan requested (automatic)");
+    dispatch_async(self.workQueue, ^{ [self performScan]; });
+}
 
 - (void)rescanNow:(nullable NSMenuItem *)sender {
     (void)sender;
@@ -1715,6 +1937,9 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
 }
 
 - (void)submitJoin:(RTWNetworkEntry *)entry passphrase:(nullable NSString *)pass {
+    /* 8.8.5: any join the user starts (a network picked in the menu, Rejoin,
+     * Reconnect USB WiFi) ends the Disconnect state. */
+    self.userDisconnected = NO;
     /* v8.7.13: the 20 s "driver settle" gate is REVERTED - it was the
      * timer fix the user rejected. The kext now restarts its station and
      * clears a halted RX pipe on every join request (driver 1.0.7), so a

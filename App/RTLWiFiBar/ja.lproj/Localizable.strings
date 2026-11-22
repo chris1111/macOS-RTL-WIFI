@@ -40,3 +40,7 @@
 "Joining \"%@\" - not connected yet%@" = "「%@」に接続中 - まだ接続されていません%@";
 "Dongle ready - not connected%@" = "ドングル準備完了 - 未接続%@";
 " (driver %@)" = " (ドライバ %@)";
+"Disconnect USB WiFi" = "USB Wi-Fiを切断";
+"Reconnect USB WiFi" = "USB Wi-Fiを再接続";
+"USB WiFi disconnected" = "USB Wi-Fiは切断されています";
+"Disconnect needs the updated driver - reinstall the kext" = "切断には更新されたドライバが必要です - kextを再インストールしてください";

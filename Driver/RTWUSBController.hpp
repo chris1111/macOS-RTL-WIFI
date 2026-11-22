@@ -426,6 +426,7 @@ private:
     IOReturn initializePlatform();
     IOReturn enableStation();
     void quiesce(bool eraseProfile);
+    void softLeave(); /* 1.1.2: leave the network, chip stays powered */
     void refreshLinkEvent();
     bool rebuildLink(const char *why);
     void shutdownPlatform();
