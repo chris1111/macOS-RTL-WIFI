@@ -11,8 +11,7 @@ adapters on Intel Macs, macOS 11 Big Sur through macOS 26. Station mode,
 
 - **Kext + installer package.** `Create_Build.tool` builds the kext and, from
   the `PKG/` folder in this tree, the full `Wireless USB macOS-RTL-WIFI.pkg`
-  installer: original Realtek StatusBarApp (v5.0.9.b11) + RtWlanHelper, launch
-  agent, automatic EFI drop-in for OpenCore or Clover (including
+  installer: RTLWiFiBar.app , launch agent, automatic EFI drop-in for OpenCore or Clover (including
   the OpenCore `config.plist` entry) and an uninstaller.
 - **Builds from the command line** with `./Create_Build.tool` (plain
   `xcodebuild` also works for the kext alone).
@@ -167,9 +166,9 @@ Products:
 
 The package offers three choices (sub-packages built with `pkgbuild` from
 `PKG/`, flattened with `pkgutil` and the `PKG/Resources/Distribution` script;
-welcome, read-me and conclusion pages ship in the same 15 languages as the
-bundled StatusBarApp — da, de, en, es, fr, fr-CA, it, ja, ko, nl, pl, pt-PT,
-ru, sv, tr — picked from the system language, English as fallback):
+welcome, read-me and conclusion pages ship in the same 16 languages as the
+bundled RTLWiFiBar.app — da, de, en, es, fr, fr-CA, it, ja, ko, nl, pl, pt-PT,
+ru, sv, tr, zh-Hans — picked from the system language, English as fallback):
 
 | Choice | What it installs |
 |---|---|
@@ -177,8 +176,7 @@ ru, sv, tr — picked from the system language, English as fallback):
 | Drivers CLOVER macOS-RTL-WIFI | kext to `EFI/CLOVER/kexts/Other/` on the ESP (Clover scans kexts, no config.plist edit) |
 | Uninstall Utility | removes the WLAN app support, launch agent and the kext from the ESP |
 
-Both driver choices also install the original Realtek StatusBarApp (v5.0.9.b11)
-and RtWlanHelper into `/Library/Application Support/WLAN`, add the launch
+Both driver choices also install the RTLWiFiBar.app, add the launch
 agent (`Wlan.Software.plist`) and require a restart. The uninstaller removes
 the `macOS-RTL-WIFI.kext` entries from the OpenCore `config.plist` and deletes
 the kext from the ESP (`EFI/OC/Kexts/` and `EFI/CLOVER/kexts/Other/`).
