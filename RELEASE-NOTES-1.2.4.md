@@ -1,4 +1,13 @@
-# Release 1.2.4 (kext 1.1.1, app 8.8.3)
+# Release 1.2.4 (kext 1.1.1, app 8.8.4)
+- App 8.8.4: after a link that lived 30 s or more is ended mid-session (the AP
+  deauthenticated the station, or a local reset), the app now rejoins the saved
+  network by itself, using the same bounded auto-rejoin as at startup (it waits
+  for a survey that sees the network, and stands down if you pick or forget a
+  network). At most 6 per rolling hour; flaps under 30 s stay manual. Field
+  log 2026-11-22 (Archer T4U, 5 GHz): the AP dropped the station twice
+  (deauth reason 4, then reason 7) and nothing rejoined until "Rejoin" was
+  clicked.
+- Adapters: Archer T3U Nano and EDIMAX EW-7811Un (N150) reported working by users; listed with a distinct mark (not tested by the maintainer).
 - App: after the dongle was unplugged and plugged back in, the saved network was
   not rejoined (field log 2026-11-22, Archer T4U: replug, driver returned, link
   stayed down). The driver-return watch is now also armed by the dead-driver

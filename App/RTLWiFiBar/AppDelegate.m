@@ -260,6 +260,9 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
  * re-armed for the most recently used profile - max 2 per session. */
 @property (assign) BOOL awaitingDriverReturn;
 @property (assign) NSInteger rescueRejoinsUsed;
+/* v8.8.4: mid-session drop rejoin budget - at most 6 per rolling hour. */
+@property (assign) NSInteger dropRejoinsUsed;
+@property (assign) NSTimeInterval dropRejoinWindowStart;
 /* v8.7.19: when the user client last became reachable (0 = not reachable).
  * Reset every time the client is lost, so a rescue re-plug restarts the
  * settle clock. */
@@ -283,6 +286,7 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
 - (void)updateIconBody:(nullable RTWDriverStatus *)status;
 - (NSString *)statusTooltip:(nullable RTWDriverStatus *)status;
 - (void)performScan;
+- (void)armAutoRejoinAfterDrop:(NSTimeInterval)now;  /* v8.8.4 */
 - (NSString *)linkDropReasonNote;           /* v8.7.3: deauth-reason log note */
 - (NSString *)decodeDeauthReason:(uint32_t)reason;
 - (NSString *)nameForJoinState:(uint32_t)state; /* v8.7.14 progress names */
@@ -562,6 +566,12 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
             } else {
                 RTWLog(@"link dropped after %.0f s %@", upFor + 0.5, why);
                 RTWLog(@"driver diagnostics at drop: %@", [self.driver diagnosticSummary]);
+                /* v8.8.4: a link that lived 30 s or more and ended (the AP
+                 * deauthenticated us, or a local reset) is rejoined by
+                 * itself. Field log 2026-11-22 (Archer T4U on 5 GHz): the AP
+                 * dropped the station twice (reason 4, reason 7) and the app
+                 * only scanned for 10+ minutes until "Rejoin" was clicked. */
+                [self armAutoRejoinAfterDrop:now];
             }
         }
     }
@@ -917,8 +927,8 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
  *  - stands down the moment the user picks or forgets a network;
  *  - gives up after five surveys never saw it (~100 s of the 20 s
  *    freshness cadence) and says so out loud;
- *  - mid-session link drops do NOT re-arm it - outside this one startup
- *    case the app still never reconnects on its own (v8.7.13 rule). */
+ *  - v8.8.4: a mid-session drop of a link that lived 30 s or more re-arms
+ *    it (armAutoRejoinAfterDrop:, max 6 per rolling hour); flaps stay manual. */
 - (void)maybeFireStartupAutoRejoinWithRecords:(NSArray<RTWNetworkEntry *> *)records {
     NSString *ssid = self.autoRejoinArmedSsid;
     if (!ssid.length) return;
@@ -1102,6 +1112,36 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
  * lived - the AP ended it. An unchanged value means no deauth was
  * recorded - the station was reset locally (USB hiccup, quiesce,
  * sleep). */
+/* v8.8.4: re-arm the same bounded auto-rejoin the startup uses (it fires when
+ * a survey sees the saved network, runs the manual join path with its
+ * monitor, and stands down when the user picks or forgets a network).
+ * Bounded: at most 6 per rolling hour so an AP that keeps dropping us never
+ * turns this into a join loop. Flaps (link up under 30 s) stay manual. */
+- (void)armAutoRejoinAfterDrop:(NSTimeInterval)now {
+    if (self.autoRejoinArmedSsid.length || self.joinInFlightSsid.length) return;
+    NSString *ssid = [self.profiles mostRecentlyUsedSsid];
+    if (!ssid.length || ![self.profiles hasProfileForSsid:ssid]) return;
+    if (self.dropRejoinWindowStart <= 0 || now - self.dropRejoinWindowStart > 3600.0) {
+        self.dropRejoinWindowStart = now;
+        self.dropRejoinsUsed = 0;
+    }
+    if (self.dropRejoinsUsed >= 6) {
+        RTWLog(@"link dropped again - auto-rejoin budget used up for this hour; use Rejoin in the menu");
+        return;
+    }
+    ++self.dropRejoinsUsed;
+    self.autoRejoinArmedSsid = ssid;
+    self.autoRejoinScansWaited = 0;
+    RTWLog(@"link dropped mid-session - auto-rejoin armed for \"%@\" (%ld/6 this hour)",
+           ssid, (long)self.dropRejoinsUsed);
+    __weak typeof(self) weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+        typeof(self) strongSelf = weakSelf;
+        if (strongSelf && strongSelf.autoRejoinArmedSsid.length) [strongSelf rescanNow:nil];
+    });
+}
+
 - (NSString *)linkDropReasonNote {
     uint32_t reason = [self.driver lastDeauthReason];
     if (reason && reason != self.deauthReasonAtLinkUp) {
