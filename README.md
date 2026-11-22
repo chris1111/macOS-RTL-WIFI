@@ -22,11 +22,13 @@ adapters on Intel Macs, macOS 11 Big Sur through macOS 26. Station mode,
 
 ## Screenshot Package installer OC and Clover
 
-<img src="PICS/Screenshot-PKG.png" alt="Github Project" style="width:40%;"><img src="PICS/Screenshot-PKGClover.png" alt="Github Project" style="width:40%;">
+<img src="PICS/Screenshot-PKG.png" alt="Github Project" style="width:60%;">
+
+<img src="PICS/Screenshot-PKGClover.png" alt="Github Project" style="width:60%;">
 
 ## Screenshot Package Uninstall Utility
 
-<img src="PICS/Screenshot-Uninstall.png" alt="Github Project" style="width:40%;">
+<img src="PICS/Screenshot-Uninstall.png" alt="Github Project" style="width:60%;">
 
 ## Screenshot StatusBarApp
 
