@@ -715,6 +715,11 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
                 RTWLog(@"scan refused by a dead driver instance - reopening the user client (attempt %ld)",
                        (long)self.scanHealCount);
                 [self.driver closeConnection];
+                /* v8.8.3: the dongle may be unplugged and plugged back after
+                 * this restart (field 2026-11-22 T4U: replug, the driver
+                 * returned, but nothing re-armed the saved network because
+                 * only the poll-failure path set this flag). */
+                self.awaitingDriverReturn = YES;
                 if (self.scanHealCount == 5) {
                     RTWLog(@"scans still refused after 5 client restarts - if the link never comes up, "
                            "unplug the dongle and plug it back once (a boot-time USB port reset killed the first attach)");
@@ -1641,6 +1646,7 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
                            channel:self.pendingSaveChannel];
     [self markKnownSsid:ssid];
     [self markActiveSsid:ssid];
+    self.rescueRejoinsUsed = 0; /* v8.8.3: a good link earns a fresh rescue budget */
     RTWLog(@"connection established - network \"%@\" saved (the app reconnects to it by itself after a restart; Forget removes it)", ssid);
     RTWLog(@"driver diagnostics at connect: %@", [self.driver diagnosticSummary]);
     [self clearPendingNetworkSave];

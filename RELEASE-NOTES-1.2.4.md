@@ -1,3 +1,10 @@
+# Release 1.2.4 (kext 1.1.1, app 8.8.3)
+- App: after the dongle was unplugged and plugged back in, the saved network was
+  not rejoined (field log 2026-11-22, Archer T4U: replug, driver returned, link
+  stayed down). The driver-return watch is now also armed by the dead-driver
+  client restart, and a successful connection resets the per-session rescue
+  budget (2 rescue rejoins).
+
 # Release 1.2.3 (kext 1.1.1, app 8.8.2 - no code change)
 
 ## Documentation and licensing
@@ -8,6 +15,7 @@
   and itlwm notices. Shipped in Release.zip (workflow) and `Build/Release`
   (`Create_Build.tool`).
 - `Driver/RTL8192EUFirmware.inc`: full urtwn notice in the header (was a one-line pointer).
+- New project page `docs/index.html` (dark, responsive, single self-contained file): tested adapter table with filter and search, install steps, known limits. Enable it in GitHub: Settings, Pages, Deploy from branch `main`, folder `/docs`.
 - `Create_Build.tool`: RTLWiFiBar.app is now copied to `Build/Release` even without `Support Donate.html`.
 
 # Release 1.2.2 (previous) (kext 1.1.1, app 8.8.2)
