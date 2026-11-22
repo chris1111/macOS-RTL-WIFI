@@ -66,18 +66,24 @@ cleanly rather than wedge the machine, but they need field logs for
 validation. Full per-ID lookup (decimal columns for ioreg output):
 `USB-ID-fleet-map.md`.
 
-Support Adapter: Many of this list not verifying yet.
+## Supported adapters
+
+Legend:
+
+- ✅ **Tested** with this kext (1.1.1): connects, auto-rejoins after reboot.
+- ⚠️ **Tested, limited**: connects, but see the note.
+- (no mark) **Listed, not verified with this kext yet.** These adapters are included because they are known to work with the original Realtek macOS drivers (RtWlanU), and they use the same chipset families this kext supports. They are expected to work, but this is not confirmed. Reports are welcome: please include the USB ID (`ioreg -p IOUSB -l | grep -i -A3 "idVendor"`) and a log.
 
 - Acer UWA5
-- Alfa AWUS036AC 
+- Alfa AWUS036AC
 - Alfa AWUS036ACH
-- Archer T2U Plus (AC600) Not Working
+- Archer T2U Plus (AC600) ✅
 - Archer T2U Nano
 - Archer T3U Nano
 - Archer T3U
 - Archer T3U Plus
 - Archer T2U MINI V3
-- ArcherT4U V1, V2, V3
+- Archer T4U V1, V2, V3 ✅
 - Archer T9UH V1, V2
 - ASUS USB AC68
 - ASUS USB-N13
@@ -87,6 +93,7 @@ Support Adapter: Many of this list not verifying yet.
 - COMFAST CF-812AC
 - Comfast CF-WU810N
 - Comfast CF-758F
+- Cudy WU1400 ✅ RTL8822BU
 - Cudy WU1300S
 - Cudy WU700
 - CXFTEOXK
@@ -95,21 +102,24 @@ Support Adapter: Many of this list not verifying yet.
 - DLink DWA-171 C
 - DLink DWA-182 D
 - DLink DWA-192 A
-- EDIMAX EW-7611UCB
+- EDIMAX EW-7611UCB ✅
 - EDIMAX EW-7722UTn V2
-- EDIMAX_EW-7822ULC
+- EDIMAX EW-7822ULC
 - EDIMAX EW-7833UAC
-- EDIMAX EW-7612Uan V2
+- EDIMAX EW-7612UAn V2
 - EDIMAX N300
-- EDIMAX EW-7811Un (N150) Not Working
+- EDIMAX EW-7811Un (N150)
 - EDUP EP-AC1689
-- Fenvi AC1300 (RTL8812bu)
-- FILOWA USB WiFi-RTL8812BU
+- Fenvi AC1300 (RTL8812BU)
+- FILOWA USB WiFi (RTL8812BU)
 - Foktech AC600 Nano
 - Jensen Eagle 100-AC
+- Generic eBay RTL8188EU dongle (0bda:0179) ⚠️ connects; no DHCP, manual IP works
 - Kextech MINI USB RTL8192
+- Generic RTL8811CU dongle (0bda:c811) ✅
 - Linksys WUSB6300 V2
 - Linksys WUSB6400M
+- MLINK 96581 ✅ RTL8821CU
 - Netgear A6100
 - Netgear A6150
 - Netgear A7000
@@ -117,26 +127,30 @@ Support Adapter: Many of this list not verifying yet.
 - M-Tech UW-01 USB
 - Mercusys MW300UM
 - Plexgear AC1200
-- Raimadim WiFi AC1300 [RTL8822BU]
+- Raimadim WiFi AC1300 (RTL8822BU)
 - Sitecom WLA7100
 - TechKey AC1200
-- TL-WN823Nv1/v2/v3/v4
-- TL-WN725Nv3
-- TL-WN723Nv2/v3
-- TL-WN722Nv2/v3
-- TL-WN821Nv6
-- TL-WN822Nv4/v5
+- TL-WN823N v1/v2/v3/v4 ✅ (tested: 2357:0109)
+- TL-WN725N v3 ⚠️ connects; DHCP gets no reply, use a manual IP address (RTL8188EU)
+- TL-WN723N v2/v3
+- TL-WN722N v2/v3 ⚠️ same RTL8188EU DHCP limitation
+- TL-WN821N v6 ✅ (tested: 2357:0107, RTL8192EU)
+- TL-WN822N v4/v5 ✅
 - TENDA W311-MINI
 - TENDA U12
+- TRENDnet mini ✅ RTL8822BU
 - TRENDnet N150 Micro
 - TRENDnet TEW-808UBM
 - TRENDnet TEW-908UB
 - UGreen CM448
 - YUNCLOUD Realtek (RTL8814AU)
-- ZAPO W58L (RTL881lAU)
+- ZAPO W58L (RTL8811AU)
 - Zebronics USB150WF1
 - Zyxel NWD6602
 - Zyxel NWD6605
+
+**Known limitation:** RTL8188EU-based adapters (some TL-WN725N / TL-WN722N, generic 0bda:0179 dongles) do not receive DHCP replies yet. They work with a manual IP address. See [KNOWN-ISSUES.md](KNOWN-ISSUES.md).
+
 
 ## Requirements
 
