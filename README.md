@@ -6,7 +6,7 @@ Realtek USB Wi-Fi driver (RTL81xx / RTL88xx families) for Intel macOS
 
 - [x] `Clone and build macOS-RTL-WIFI:` Requirement Xcode 26
 ```bash
-git clone https://github.com/chris1111/macOS-RTL-WIFI.git && cd $HOME/macOS-RTL-WIFI && Create_Build.tool
+git clone https://github.com/chris1111/macOS-RTL-WIFI.git && cd $HOME/macOS-RTL-WIFI && ./Create_Build.tool
 ```
 
 Independent macOS kernel-extension project for Realtek USB Wi-Fi adapters on
