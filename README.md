@@ -68,7 +68,7 @@ validation. Full per-ID lookup (decimal columns for ioreg output):
 
 ## Supported adapters: 
 
-### We have 14 adapter that have been tested and are functional. If you have a dongle from this list that works, please open a discussion and let us know. Thank you.
+### We have 14 adapter that have been tested and are functional. If you have a dongle from this list that works, please open a ➤ [discussion](https://github.com/chris1111/macOS-RTL-WIFI/discussions) and let us know. Thank you.
 
 Legend:
 
