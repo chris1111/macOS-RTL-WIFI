@@ -2,6 +2,13 @@
 Realtek USB Wi-Fi driver (RTL81xx / RTL88xx families) for Intel macOS
 ### Download Release ➦ [macOS-RTL-WIFI](https://github.com/chris1111/macOS-RTL-WIFI/releases)
 
+### Building the Project:
+
+- [x] `Clone and build macOS-RTL-WIFI:` Requirement Xcode 26
+```bash
+git clone https://github.com/chris1111/macOS-RTL-WIFI.git && cd $HOME/macOS-RTL-WIFI && Create_Build.tool
+```
+
 Independent macOS kernel-extension project for Realtek USB Wi-Fi adapters on
 Intel Macs (Hackintosh with OpenCore or Clover). Station mode, WPA2-Personal,
 2.4 GHz and, on dual-band adapters, 5 GHz. Developed and tested on macOS
