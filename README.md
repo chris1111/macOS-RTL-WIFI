@@ -31,7 +31,7 @@ adapters on Intel Macs, macOS 11 Big Sur through macOS 26. Station mode,
 
 ## Screenshot StatusBarApp
 
-<img src="PICS/Screenshot-App.png" alt="Github Project" style="width:40%;">
+<img src="PICS/Screenshot-App.png" alt="Github Project" style="width:40%;"><img src="PICS/Screenshot-App2.png" alt="Github Project" style="width:40%;">
 
 
 ## Supported adapters — full verified Realtek USB fleet, 263 personalities
