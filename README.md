@@ -12,7 +12,7 @@ git clone https://github.com/chris1111/macOS-RTL-WIFI.git && cd $HOME/macOS-RTL-
 Independent macOS kernel-extension project for Realtek USB Wi-Fi adapters on
 Intel Macs (Hackintosh with OpenCore or Clover). Station mode, WPA2-Personal,
 2.4 GHz and, on dual-band adapters, 5 GHz. Developed and tested on macOS
-Monterey, macOS Ventura and macOS Tahoe. Working from macOS 1 to macOS 26
+Monterey, macOS Ventura and macOS Tahoe. Working from macOS 11 to macOS 26
 
 > **This driver is in development.** Expect changes between releases; test
 > before relying on it for daily use, and report issues on the project page.
