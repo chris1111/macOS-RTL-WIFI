@@ -131,18 +131,18 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: macOS-RTL-WIFI-1.0.3-release-assets
+          name: macOS-RTL-WIFI-1.0.1-release-assets
           path: ${{ runner.temp }}/release/Release.zip
           if-no-files-found: warn
           retention-days: 14
 
-      - name: Publish the 1.0.3 release
+      - name: Publish the 1.0.1 release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          TAG="1.0.3"
+          TAG="1.0.1"
           cd "${RUNNER_TEMP}/release"
           ASSETS=("Release.zip")
           for asset in "${ASSETS[@]}"; do
@@ -153,7 +153,7 @@ jobs:
           done
           KEXT_VER="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' \
             "${GITHUB_WORKSPACE}/Build/Release/macOS-RTL-WIFI.kext/Contents/Info.plist" \
-            2>/dev/null || printf '1.0.3')"
+            2>/dev/null || printf '1.0.1')"
           cat > "${RUNNER_TEMP}/release-notes.md" <<EOF
           Automated release build of **macOS-RTL-WIFI** produced by GitHub
           Actions from this source tree.
@@ -162,14 +162,14 @@ jobs:
             bundle id com.rtlwifi.macos.driver
           - **Full installer:** Wireless USB macOS-RTL-WIFI.pkg - delivers the
             kext to the EFI partition for OpenCore and Clover, with the original
-            Realtek StatusBarApp and its launch agent
+            Realtek RTLWiFiBar and its launch agent
           - **Support Donate.html** - PayPal donation page
 
           ### Downloads
             - **Release.zip** - Everything in one download:
             - macOS-RTL-WIFI.kext - the driver (inject via OpenCore or Clover)
             - Wireless USB macOS-RTL-WIFI.pkg - recommended full installer
-              (OpenCore + Clover delivery to the EFI partition, StatusBarApp
+              (OpenCore + Clover delivery to the EFI partition, RTLWiFiBar
               and launch agent)
             - Support Donate.html - PayPal donation page
 
@@ -198,6 +198,6 @@ jobs:
             gh release create "$TAG" "${ASSETS[@]}" \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
-              --title "macOS-RTL-WIFI 1.0.3" \
+              --title "macOS-RTL-WIFI 1.0.1" \
               --notes-file "${RUNNER_TEMP}/release-notes.md"
           fi
