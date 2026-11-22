@@ -1,4 +1,4 @@
-[![pages-build-deployment](https://github.com/chris1111/macOS-RTL-WIFI/actions/workflows/pages/pages-build-deployment/badge.svg)](https://github.com/chris1111/macOS-RTL-WIFI/actions/workflows/pages/pages-build-deployment) [![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://github.com/chris1111/macOS-RTL-WIFI/blob/main/LICENSE)
+[![pages-build-deployment](https://github.com/chris1111/macOS-RTL-WIFI/actions/workflows/pages/pages-build-deployment/badge.svg)](https://github.com/chris1111/macOS-RTL-WIFI/actions/workflows/pages/pages-build-deployment) [![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://github.com/chris1111/macOS-RTL-WIFI/blob/main/LICENSE) [![.github/workflows/Build.yml](https://github.com/chris1111/macOS-RTL-WIFI/actions/workflows/Build.yml/badge.svg)](https://github.com/chris1111/macOS-RTL-WIFI/actions/workflows/Build.yml)
 # macOS-RTL-WIFI
 Realtek USB Wi-Fi driver (RTL81xx / RTL88xx families) for Intel macOS
 ### Download Release ➦ [macOS-RTL-WIFI](https://github.com/chris1111/macOS-RTL-WIFI/releases)
