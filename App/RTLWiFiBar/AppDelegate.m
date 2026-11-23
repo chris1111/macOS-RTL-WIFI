@@ -1995,6 +1995,10 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
                                                             authMode:[self.profiles authModeForSsid:self.savedSsid]
                                                       needsPassphrase:(pass.length > 0)];
     [self submitJoin:target passphrase:pass];
+    /* 2026-11-22: the Rejoin button also joins with the saved password, so a
+     * failed handshake must offer the retype window here too (the profile is
+     * written when the password is typed, before it is known to work). */
+    if (pass.length > 0 && self.joinInFlightSsid.length) self.joinWatchSavedPass = YES;
 }
 
 - (void)submitJoin:(RTWNetworkEntry *)entry passphrase:(nullable NSString *)pass {
