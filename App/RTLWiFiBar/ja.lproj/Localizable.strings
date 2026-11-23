@@ -44,3 +44,5 @@
 "Reconnect USB WiFi" = "USB Wi-Fiを再接続";
 "USB WiFi disconnected" = "USB Wi-Fiは切断されています";
 "Disconnect needs the updated driver - reinstall the kext" = "切断には更新されたドライバが必要です - kextを再インストールしてください";
+"Could not join \"%@\"" = "\"%@\" に接続できませんでした";
+"The saved password was not accepted. If the password changed (a phone hotspot or a new router key), type the new one in the next window." = "保存されているパスワードが受け付けられませんでした。パスワードが変更された場合（スマートフォンのホットスポットやルーターの新しいキー）は、次のウィンドウで新しいパスワードを入力してください。";

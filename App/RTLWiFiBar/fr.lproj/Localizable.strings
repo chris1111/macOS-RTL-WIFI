@@ -44,3 +44,5 @@
 "Reconnect USB WiFi" = "Reconnecter le Wi-Fi USB";
 "USB WiFi disconnected" = "Wi-Fi USB déconnecté";
 "Disconnect needs the updated driver - reinstall the kext" = "La déconnexion nécessite le pilote à jour - réinstallez le kext";
+"Could not join \"%@\"" = "Impossible de rejoindre « %@ »";
+"The saved password was not accepted. If the password changed (a phone hotspot or a new router key), type the new one in the next window." = "Le mot de passe enregistré n'a pas été accepté. S'il a changé (partage de connexion d'un téléphone ou nouvelle clé du routeur), saisissez le nouveau dans la fenêtre suivante.";

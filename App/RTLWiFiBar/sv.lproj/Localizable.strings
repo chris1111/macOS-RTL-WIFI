@@ -44,3 +44,5 @@
 "Reconnect USB WiFi" = "Återanslut USB-wifi";
 "USB WiFi disconnected" = "USB-wifi frånkopplat";
 "Disconnect needs the updated driver - reinstall the kext" = "Frånkoppling kräver den uppdaterade drivrutinen - installera om kext";
+"Could not join \"%@\"" = "Det gick inte att ansluta till \"%@\"";
+"The saved password was not accepted. If the password changed (a phone hotspot or a new router key), type the new one in the next window." = "Det sparade lösenordet godkändes inte. Om lösenordet har ändrats (en telefons hotspot eller en ny routernyckel), skriv det nya i nästa fönster.";

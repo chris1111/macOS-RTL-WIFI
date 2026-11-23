@@ -44,3 +44,5 @@
 "Reconnect USB WiFi" = "USB Wi-Fi'ye Yeniden Bağlan";
 "USB WiFi disconnected" = "USB Wi-Fi bağlantısı kesildi";
 "Disconnect needs the updated driver - reinstall the kext" = "Bağlantıyı kesmek için güncel sürücü gerekir - kext'i yeniden yükleyin";
+"Could not join \"%@\"" = "\"%@\" ağına bağlanılamadı";
+"The saved password was not accepted. If the password changed (a phone hotspot or a new router key), type the new one in the next window." = "Kayıtlı parola kabul edilmedi. Parola değiştiyse (telefon etkin noktası veya yeni yönlendirici anahtarı), yenisini sonraki pencerede girin.";

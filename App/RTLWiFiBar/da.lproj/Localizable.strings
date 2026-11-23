@@ -44,3 +44,5 @@
 "Reconnect USB WiFi" = "Genopret USB-wi-fi";
 "USB WiFi disconnected" = "USB-wi-fi afbrudt";
 "Disconnect needs the updated driver - reinstall the kext" = "Afbrydelse kræver den opdaterede driver - geninstaller kext";
+"Could not join \"%@\"" = "Kunne ikke oprette forbindelse til \"%@\"";
+"The saved password was not accepted. If the password changed (a phone hotspot or a new router key), type the new one in the next window." = "Den gemte adgangskode blev ikke accepteret. Hvis adgangskoden er ændret (en telefons hotspot eller en ny routernøgle), skal du skrive den nye i næste vindue.";

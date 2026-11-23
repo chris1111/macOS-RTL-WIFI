@@ -44,3 +44,5 @@
 "Reconnect USB WiFi" = "重新连接 USB Wi-Fi";
 "USB WiFi disconnected" = "USB Wi-Fi 已断开";
 "Disconnect needs the updated driver - reinstall the kext" = "断开连接需要更新的驱动程序 - 请重新安装 kext";
+"Could not join \"%@\"" = "无法加入“%@”";
+"The saved password was not accepted. If the password changed (a phone hotspot or a new router key), type the new one in the next window." = "已保存的密码未被接受。如果密码已更改（手机热点或路由器的新密钥），请在下一个窗口中输入新密码。";

@@ -44,3 +44,5 @@
 "Reconnect USB WiFi" = "USB Wi-Fi 다시 연결";
 "USB WiFi disconnected" = "USB Wi-Fi 연결 해제됨";
 "Disconnect needs the updated driver - reinstall the kext" = "연결 해제에는 업데이트된 드라이버가 필요합니다 - kext를 다시 설치하세요";
+"Could not join \"%@\"" = "\"%@\"에 연결할 수 없습니다";
+"The saved password was not accepted. If the password changed (a phone hotspot or a new router key), type the new one in the next window." = "저장된 암호가 허용되지 않았습니다. 암호가 변경된 경우(휴대전화 핫스팟 또는 새 공유기 키) 다음 창에서 새 암호를 입력하세요.";
