@@ -153,6 +153,9 @@ int RTWUSBController::start88(){
  stage=8;e=rtw88_station_initialize(&r88Station_,&r88MAC_,r88RadioState,this,r88MACAddress_);if(e)goto fail;
  stage=9;ic.ic_bss->ni_chan=ic.ic_ibss_chan;e=set88Channel((uint8_t)ieee80211_chan2ieee(&ic,ic.ic_ibss_chan),false);if(e)goto fail;
  stage=10;e=busInitialize(this);if(e)goto fail;stage=11;e=send88Startup();if(e)goto fail;stage=12;e=coex88Start();if(e)goto fail;r88SnapAuth_=false;r88SnapStall_=false;snapshot88("start");
+ /* LED test (8822BU only, best effort, never fails the start): put the activity LED in hardware TX+RX blink mode,
+  * same register sequence as Realtek halmac pinmux_wl_led_mode (REG_LED_CFG+2: clear bit 6 and bits 0-2, set bit 3, mode TRX=2). */
+ if(family_==RTW_WIFI_RTL8822BU){uint32_t led=0;if(!r88Read(this,0x4e,1,&led)){led=(led&~0x47U)|0x08U|2U;(void)r88Write(this,0x4e,1,led);}}
  ifq_clr_oactive(&ifp.if_snd);ifp.if_flags|=IFF_RUNNING;stage=13;e=ic.ic_newstate(&ic,IEEE80211_S_SCAN,-1);if(e)goto fail;radioReady_=true;return 0;
 fail:r88StartFailSub_=r88BootSub_;r88StartFailStage_=(uint32_t)stage;r88StartFailErr_=(uint32_t)e;++r88StartFails_;stop88();core_.core_error=e;return e;
 }
