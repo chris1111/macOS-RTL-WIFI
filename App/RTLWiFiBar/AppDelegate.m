@@ -197,6 +197,7 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
 @property (strong) NSLock *stateLock;
 @property (strong, nullable) RTWDriverStatus *lastStatus;
 @property (copy, nullable) NSArray<RTWNetworkEntry *> *lastNetworks;
+@property (strong) NSMutableDictionary<NSString *, NSDictionary *> *seenNetworks; /* ssid -> @{e: entry, t: time} */
 @property (assign) BOOL scanning;
 @property (assign) NSTimeInterval lastScanFinished;
 @property (copy, nullable) NSString *savedSsid;
@@ -498,6 +499,7 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
             st.lastError = detail ?: @"";
             self.lastStatus = st;
             self.lastNetworks = @[];
+            [self.seenNetworks removeAllObjects];
             [self.stateLock unlock];
             dispatch_async(dispatch_get_main_queue(), ^{
                 [self updateIcon:st];
@@ -843,7 +845,30 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
         RTWLog(@"scan done: %lu networks", (unsigned long)records.count);
 
         [self.stateLock lock];
-        self.lastNetworks = records;
+        /* 2026-11-23: once the link is up the kext answers every scan from its
+         * cache, and a join leaves only the networks of its own channel in it
+         * (field log 05:10-05:13: 39 networks at start, 7-8 after a join, the
+         * other saved network gone until Forget or a replug). Keep the
+         * networks seen in the last 10 minutes in the menu list. Only the
+         * menu list is merged: the auto-rejoin below still gets the raw survey. */
+        if (!self.seenNetworks) self.seenNetworks = [NSMutableDictionary dictionary];
+        NSTimeInterval seenNow = [NSDate timeIntervalSinceReferenceDate];
+        NSMutableArray<RTWNetworkEntry *> *merged = [NSMutableArray arrayWithArray:records ?: @[]];
+        NSMutableSet<NSString *> *presentSsids = [NSMutableSet set];
+        for (RTWNetworkEntry *e in records) {
+            if (!e.ssid.length) continue;
+            [presentSsids addObject:e.ssid];
+            self.seenNetworks[e.ssid] = @{@"e": e, @"t": @(seenNow)};
+        }
+        for (NSString *ssid in [self.seenNetworks allKeys]) {
+            NSDictionary *item = self.seenNetworks[ssid];
+            if (seenNow - [item[@"t"] doubleValue] > 600.0) {
+                [self.seenNetworks removeObjectForKey:ssid];
+            } else if (![presentSsids containsObject:ssid]) {
+                [merged addObject:item[@"e"]];
+            }
+        }
+        self.lastNetworks = merged;
         self.scanning = NO;
         self.lastScanFinished = [NSDate timeIntervalSinceReferenceDate];
         [self.stateLock unlock];
