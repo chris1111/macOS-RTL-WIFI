@@ -85,7 +85,7 @@ the machine, but they need field logs for validation.
 
 ## Adapter compatibility list
 
-**13 adapters have been tested** (✅ working). If you have a dongle from this list that works, please open a ➤ [discussion](https://github.com/chris1111/macOS-RTL-WIFI/discussions) and let us know. Thank you.
+**15 adapters have been tested** (✅ working). If you have a dongle from this list that works, please open a ➤ [discussion](https://github.com/chris1111/macOS-RTL-WIFI/discussions) and let us know. Thank you.
 
 Legend:
 
