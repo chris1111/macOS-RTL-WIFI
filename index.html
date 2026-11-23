@@ -198,7 +198,6 @@ footer p+p{margin-top:10px;max-width:70ch}
       <div class="seg" role="group" aria-label="Filter by result">
         <button type="button" data-f="all" aria-pressed="true">All 13</button>
         <button type="button" data-f="ok" aria-pressed="false">Working</button>
-        <button type="button" data-f="warn" aria-pressed="false">Limited</button>
       </div>
       <input class="search" id="q" type="search" placeholder="Search by name, chip or USB ID" aria-label="Search adapters">
     </div>
@@ -217,9 +216,9 @@ footer p+p{margin-top:10px;max-width:70ch}
           <tr data-s="ok"><td class="name">TP-Link TL-WN823N</td><td>RTL8192EU</td><td class="id">2357:0109</td><td><span class="pill ok">Working</span></td><td class="note"></td></tr>
           <tr data-s="ok"><td class="name">TP-Link TL-WN822N</td><td>RTL8192CU / EU</td><td class="id"></td><td><span class="pill ok">Working</span></td><td class="note"></td></tr>
           <tr data-s="ok"><td class="name">TP-Link TL-WN821N</td><td>RTL8192EU</td><td class="id">2357:0107</td><td><span class="pill ok">Working</span></td><td class="note">Checked on both test machines.</td></tr>
-          <tr data-s="warn"><td class="name">Generic eBay dongle</td><td>RTL8188EU</td><td class="id">0bda:0179</td><td><span class="pill warn">Limited</span></td><td class="note">Joins the network but gets no DHCP reply. A manual IP address works.</td></tr>
-          <tr data-s="warn"><td class="name">TP-Link TL-WN725N</td><td>RTL8188EU</td><td class="id"></td><td><span class="pill warn">Limited</span></td><td class="note">Same DHCP limit. Use a manual IP address.</td></tr>
-          <tr data-s="warn"><td class="name">TP-Link TL-WN722N</td><td>RTL8188EU</td><td class="id">2357:010c</td><td><span class="pill warn">Limited</span></td><td class="note">Same DHCP limit. Use a manual IP address.</td></tr>
+          <tr data-s="ok"><td class="name">Generic eBay dongle</td><td>RTL8188EU</td><td class="id">0bda:0179</td><td><span class="pill ok">Working</span></td><td class="note"></td></tr>
+          <tr data-s="ok"><td class="name">TP-Link TL-WN725N</td><td>RTL8188EU</td><td class="id"></td><td><span class="pill ok">Working</span></td><td class="note"></td></tr>
+          <tr data-s="ok"><td class="name">TP-Link TL-WN722N</td><td>RTL8188EU</td><td class="id">2357:010c</td><td><span class="pill ok">Working</span></td><td class="note"></td></tr>
         </tbody>
       </table>
       <p class="empty" id="empty">No adapter matches. Clear the search or pick All.</p>
@@ -248,7 +247,6 @@ footer p+p{margin-top:10px;max-width:70ch}
       <div>
         <h3>Known limits</h3>
         <ul>
-          <li>RTL8188EU adapters join the network but get no DHCP reply. Set a manual IP address.</li>
           <li>After a Wi-Fi drop in the middle of a session, the connection does not return by itself. A reboot rejoins normally.</li>
           <li>A replacement dongle appears as a new network service ("NIC 2") because macOS identifies interfaces by MAC address.</li>
           <li>Station mode with WPA2-Personal only. Intel Macs only.</li>
@@ -265,7 +263,7 @@ footer p+p{margin-top:10px;max-width:70ch}
             <tr><td>RTL8821CU</td><td><span class="pill ok">Tested</span></td></tr>
             <tr><td>RTL8723BU</td><td><span class="pill ok">Tested</span></td></tr>
             <tr><td>RTL8192EU / 8192CU</td><td><span class="pill ok">Tested</span></td></tr>
-            <tr><td>RTL8188EU</td><td><span class="pill warn">Limited</span></td></tr>
+            <tr><td>RTL8188EU</td><td><span class="pill ok">Tested</span></td></tr>
             <tr><td>RTL8812AU, 8814AU, 8822CU, 8192DU, 8192FU, 8710BU</td><td>Included, not tested</td></tr>
           </tbody>
         </table>

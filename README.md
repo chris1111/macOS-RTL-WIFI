@@ -65,7 +65,7 @@ RTL8814BU stay out (fail-closed).
 
 | Family | USB IDs | Status |
 |---|---|---|
-| RTL8188EU / RTL8192EU | 28 | ✅ 8192EU tested (TL-WN823N, TL-WN822N, TL-WN821N); ⚠️ 8188EU connects but **no DHCP**, manual IP works |
+| RTL8188EU / RTL8192EU | 28 | ✅ 8192EU tested (TL-WN823N, TL-WN822N, TL-WN821N); ✅ 8188EU tested (TL-WN725N, generic 0bda:0179) |
 | RTL8192CU era (8188CU/CUS/CTV/RU/92C) | 88 | implemented, not tested |
 | RTL8812AU | 36 | implemented, not tested |
 | RTL8821AU | 35 | ✅ tested (Archer T2U Plus, 20 MHz) |
@@ -85,12 +85,11 @@ the machine, but they need field logs for validation.
 
 ## Adapter compatibility list
 
-**13 adapters have been tested** (✅ working, ⚠️ working with limits). If you have a dongle from this list that works, please open a ➤ [discussion](https://github.com/chris1111/macOS-RTL-WIFI/discussions) and let us know. Thank you.
+**13 adapters have been tested** (✅ working). If you have a dongle from this list that works, please open a ➤ [discussion](https://github.com/chris1111/macOS-RTL-WIFI/discussions) and let us know. Thank you.
 
 Legend:
 
 - ✅ **Tested** with this kext (1.1.1): connects, auto-rejoins after reboot.
-- ⚠️ **Tested, limited**: connects, but see the note.
 - (no mark) **Listed, not verified with this kext yet.** These adapters are included because they are known to work with the original Realtek macOS drivers (RtWlanU), and they use the same chipset families this kext supports. They are expected to work, but this is not confirmed. Reports are welcome: please include the USB ID (`ioreg -p IOUSB -l | grep -i -A3 "idVendor"`) and a log.
 
 - Acer UWA5
@@ -133,7 +132,7 @@ Legend:
 - FILOWA USB WiFi (RTL8812BU)
 - Foktech AC600 Nano
 - Jensen Eagle 100-AC
-- Generic eBay RTL8188EU dongle (0bda:0179) ⚠️ connects; no DHCP, manual IP works
+- Generic eBay RTL8188EU dongle (0bda:0179) ✅
 - Kextech MINI USB RTL8192
 - Generic RTL8811CU dongle (0bda:c811) ✅
 - Linksys WUSB6300 V2
@@ -150,9 +149,9 @@ Legend:
 - Sitecom WLA7100
 - TechKey AC1200
 - TL-WN823N v1/v2/v3/v4 ✅ (tested: 2357:0109)
-- TL-WN725N v3 ⚠️ connects; DHCP gets no reply, use a manual IP address (RTL8188EU)
+- TL-WN725N v3 ✅ (RTL8188EU)
 - TL-WN723N v2/v3
-- TL-WN722N v2/v3 ⚠️ same RTL8188EU DHCP limitation
+- TL-WN722N v2/v3 ✅ (RTL8188EU)
 - TL-WN821N v6 ✅ (tested: 2357:0107, RTL8192EU)
 - TL-WN822N v4/v5 ✅
 - TENDA W311-MINI
@@ -172,7 +171,6 @@ Per-dongle test details: [DONGLES.md](DONGLES.md).
 
 ## Known limitations
 
-- **RTL8188EU adapters (TL-WN725N, TL-WN722N, generic 0bda:0179):** they associate with the router but get no DHCP reply. Set a manual IP address.
 - No automatic rejoin after a Wi-Fi drop in the middle of a session (a reboot rejoins normally).
 - A replacement dongle appears as a new network service ("NIC 2").
 

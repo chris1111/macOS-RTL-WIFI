@@ -50,7 +50,13 @@ rtw_packet_error RTWUSBController::decodeUSBFrame(rtw_rx_iterator*it,
      * The receive policy drops that MPDU after validation, keeping beacons
      * in the same USB aggregate available to net80211. */
     out->payload=old.packet;
-    if(old.ht&&!old.report_type)out->payload.rate_index=(uint8_t)(12U+old.packet.rate_index);out->report_is_c2h=old.report_type!=0;
+    /* 1.1.2: the 8188E/92C descriptor already reports HT rates as 0x0c+MCS
+     * (Realtek DESC_RATEMCS0 = 0x0c). Adding 12 again put every HT frame at
+     * index 24+ and the receive policy dropped it (8188EU: DHCP OFFER lost,
+     * RXBigChipDropped counted every large unicast frame). Keep a code that is
+     * already 12+ and only offset a plain MCS number. */
+    if(old.ht&&!old.report_type&&old.packet.rate_index<12U)out->payload.rate_index=(uint8_t)(12U+old.packet.rate_index);
+    out->report_is_c2h=old.report_type!=0;
     out->security_code=old.security_code;out->sw_decrypt_required=old.sw_decrypt_required;
     *reportType=old.report_type;return RTW_PACKETS_OK;
 }
