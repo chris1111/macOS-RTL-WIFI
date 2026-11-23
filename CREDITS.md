@@ -1,9 +1,10 @@
 # Credits and upstream acknowledgements
 
-macOS-RTL-WIFI is an independent project. The macOS integration, the RTL8188EU
-USB bring-up, the link-heal logic and the build system in this tree are this
-project's own work. The driver stands on published upstream material; every
-third-party copyright and license notice is retained in the respective files.
+macOS-RTL-WIFI is an independent project. The RTLWiFiBar application, the
+link-heal logic and the build system in this tree are this project's own work.
+The driver stands on published upstream material and shares some files with
+the projects credited below; every third-party copyright and license notice is
+retained in the respective files.
 
 ## Primary upstream reference — RTL8188EU
 
@@ -26,6 +27,9 @@ third-party copyright and license notice is retained in the respective files.
   implementations.
 - [OpenIntelWireless/itlwm](https://github.com/OpenIntelWireless/itlwm) — the
   macOS-compatible `net80211` integration used by the Stack.
+- [danielnmaldonado/TahoeRealtekWiFi](https://github.com/danielnmaldonado/TahoeRealtekWiFi)
+  — macOS Realtek USB Wi-Fi project (GPL-2.0), used as a reference; some files
+  in `Core/` and `Driver/` are shared with it. Original notices are retained.
 - [wireless-regdb](https://git.kernel.org/pub/scm/linux/kernel/git/wens/wireless-regdb.git)
   — regulatory data reference (ISC license retained, `Stack/wireless-regdb/`).
 - Realtek Corporation — hardware definitions and the separately licensed
