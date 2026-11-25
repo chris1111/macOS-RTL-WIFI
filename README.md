@@ -89,7 +89,7 @@ the machine, but they need field logs for validation.
 
 Legend:
 
-- ✅ **Tested** with this kext (1.1.1): connects, auto-rejoins after reboot.
+- ✅ **Tested** with this kext (1.1.2): connects, auto-rejoins after reboot.
 - (no mark) **Listed, not verified with this kext yet.** These adapters are included because they are known to work with the original Realtek macOS drivers (RtWlanU), and they use the same chipset families this kext supports. They are expected to work, but this is not confirmed. Reports are welcome: please include the USB ID (`ioreg -p IOUSB -l | grep -i -A3 "idVendor"`) and a log.
 
 - Acer UWA5
@@ -248,7 +248,7 @@ redistribution licenses (not GPL-2.0); they are included in the same file.
 
 ## Status
 
-Current versions: kext **1.1.1**, RTLWiFiBar **8.8.2**. See
+Current versions: kext **1.1.2**, RTLWiFiBar **8.8.4**. See
 [RELEASE-NOTES-1.2.3.md](RELEASE-NOTES-1.2.3.md) and `docs/patch-history/` for
 what changed between releases. Re-verify on your own hardware after the first
 EFI swap.
