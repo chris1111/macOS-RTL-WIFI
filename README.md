@@ -235,7 +235,7 @@ Primary upstream reference for the RTL8188EU hardware programming:
 
 The full upstream list — Linux `rtw88` / `rtl8xxxu`, OpenBSD `rtwn` and
 `net80211`, the OpenIntelWireless `itlwm` net80211 macOS integration, FreeBSD
-`rtwn`, `wireless-regdb`, Realtek firmware terms — is documented in
+`rtwn`, `macOS Realtek USB Wi-Fi project`, `wireless-regdb`, Realtek firmware terms — is documented in
 [CREDITS.md](CREDITS.md) and [SOURCES.md](SOURCES.md).
 
 ## License
