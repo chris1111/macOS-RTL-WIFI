@@ -110,6 +110,10 @@ static NSInteger const kTagQuit = 15;
  * re-pinned at launch); the key stays declared only so the launch wipe
  * (and Forget) can clear leftovers from older builds. */
 static NSString * const kDefaultsActiveSsid = @"RTWActiveSsid";
+/* 1.1.3: "Prefer 5 GHz" (default ON). On a dual-band network the join is
+ * pinned (BSSID) to the strongest 5 GHz AP of that SSID at -75 dBm or
+ * better; otherwise the driver picks by SSID as before. */
+static NSString * const kDefaultsPrefer5GHz = @"RTWPrefer5GHz";
 /* v8.7.19: seconds the dongle must have been reachable before the startup /
  * post-rescue auto-rejoin may submit. Field logs 2026-11-20: a dual-band
  * (802.11ac) dongle joined fine when the user picked the network ~40 s after
@@ -189,6 +193,9 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
 @end
 
 @interface AppDelegate () <NSMenuDelegate>
+@property (copy, nullable) NSString *scanDetourSsid; /* left the network for a full sweep to find the preferred AP */
+@property (assign) NSTimeInterval lastPreferSweepAt;  /* bounds that sweep to one a minute */
+@property (copy, nullable) NSArray<RTWNetworkEntry *> *rawSurvey; /* last raw survey, one record per AP */
 @property (strong) RTWDriverClient *driver;
 @property (strong) RTWProfileStore *profiles;   /* app-owned plist, no Keychain */
 @property (strong) NSStatusItem *statusItem;
@@ -363,6 +370,7 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
            info[@"CFBundleShortVersionString"] ?: @"?",
            info[@"CFBundleVersion"] ?: @"?", (int)getpid());
 
+    [[NSUserDefaults standardUserDefaults] registerDefaults:@{kDefaultsPrefer5GHz: @YES}];
     /* App Nap hint for the 1 Hz poller (background, not sleep-blocking). */
     self.activityToken = [[NSProcessInfo processInfo] beginActivityWithOptions:
                               NSActivityBackground reason:@"RTLWiFiBar driver poll"];
@@ -845,6 +853,7 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
         RTWLog(@"scan done: %lu networks", (unsigned long)records.count);
 
         [self.stateLock lock];
+        self.rawSurvey = records;
         /* 2026-11-23: once the link is up the kext answers every scan from its
          * cache, and a join leaves only the networks of its own channel in it
          * (field log 05:10-05:13: 39 networks at start, 7-8 after a join, the
@@ -1023,6 +1032,12 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
            (long)(self.joinAttemptFailures + 1));
     RTWLog(@"driver diagnostics at join stall: %@", [self.driver diagnosticSummary]);
     NSString *pass = self.joinWatchKey; /* session memory only */
+    /* fork: the pinned AP did not come up - retry by name so a vanished or
+     * unreachable AP can never keep us off the network. */
+    if (self.joinWatchEntry.pinBssid) {
+        self.joinWatchEntry.pinBssid = NO;
+        RTWLog(@"re-submit drops the AP pin - joining %@ by network name", self.joinWatchEntry.ssid);
+    }
     [self noteJoinSubmittedForEntry:self.joinWatchEntry passphrase:pass];
     NSString *detail = nil;
     if ([self.driver joinNetwork:self.joinWatchEntry passphrase:pass error:&detail]) {
@@ -1136,7 +1151,7 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
     [self markActiveSsid:ssid];
     [self markKnownSsid:ssid];
     [self armPendingNetworkSaveForEntry:found passphrase:pass];
-    [self submitAutoRejoin:found passphrase:pass];
+    [self joinSavedEntry:found passphrase:pass automatic:YES]; /* fork: preferred 5 GHz AP */
 }
 
 /* The auto-rejoin's own submit: identical to submitJoin minus the modal
@@ -1146,6 +1161,7 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
     /* Arm the join watch BEFORE the driver call (same rule as
      * submitJoin) so the monitor owns the outcome: link-up confirmation,
      * live progress, the two bounded re-submits, the honest failure. */
+    entry = [self entryApplyingBandPreference:entry];
     [self noteJoinSubmittedForEntry:entry passphrase:pass];
     NSString *detail = nil;
     BOOL ok = [self.driver joinNetwork:entry passphrase:pass error:&detail];
@@ -1250,6 +1266,7 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
  * turns this into a join loop. 8.8.5: flaps (link up under 30 s) use it too. */
 - (void)armAutoRejoinAfterDrop:(NSTimeInterval)now {
     if (self.userDisconnected) return; /* 8.8.5: the user disconnected on purpose */
+    if (self.scanDetourSsid.length) return; /* left for a full sweep on purpose */
     if (self.autoRejoinArmedSsid.length || self.joinInFlightSsid.length) return;
     NSString *ssid = [self.profiles mostRecentlyUsedSsid];
     if (!ssid.length || ![self.profiles hasProfileForSsid:ssid]) return;
@@ -1433,6 +1450,12 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
     rescan.tag = kTagRescan;
     rescan.enabled = YES;
     [menu addItem:rescan];
+    NSMenuItem *prefer5 = [[NSMenuItem alloc] initWithTitle:NSLocalizedString(@"Prefer 5 GHz", nil)
+                                                     action:@selector(togglePrefer5GHz:) keyEquivalent:@""];
+    prefer5.target = self;
+    prefer5.state = [[NSUserDefaults standardUserDefaults] boolForKey:kDefaultsPrefer5GHz]
+                        ? NSControlStateValueOn : NSControlStateValueOff;
+    [menu addItem:prefer5];
 
     /* v8.7.17: profiles persist across restarts now, so the saved network
      * is pinned again at launch and reconnects by itself (one bounded
@@ -1772,6 +1795,7 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
     (void)sender;
     if (!self.userDisconnected) {
         self.userDisconnected = YES;
+        self.scanDetourSsid = nil; /* a sweep for the preferred AP ends too */
         [self standDownStartupAutoRejoin:@"you clicked Disconnect USB WiFi"];
         [self clearPendingNetworkSave];
         [self clearJoinFlightWatch];
@@ -2019,17 +2043,120 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
     RTWNetworkEntry *target = [[RTWNetworkEntry alloc] initWithSsid:self.savedSsid
                                                             authMode:[self.profiles authModeForSsid:self.savedSsid]
                                                       needsPassphrase:(pass.length > 0)];
-    [self submitJoin:target passphrase:pass];
     /* 2026-11-22: the Rejoin button also joins with the saved password, so a
-     * failed handshake must offer the retype window here too (the profile is
-     * written when the password is typed, before it is known to work). */
-    if (pass.length > 0 && self.joinInFlightSsid.length) self.joinWatchSavedPass = YES;
+     * failed handshake must offer the retype window (set inside joinSavedEntry). */
+    [self joinSavedEntry:target passphrase:pass automatic:NO];
+}
+
+/* 1.1.3: Prefer 5 GHz. Returns the entry to join: the strongest 5 GHz AP of
+ * the same SSID (>= -75 dBm) pinned by BSSID, else the entry itself unpinned
+ * (the driver then joins by SSID exactly as before). */
+- (RTWNetworkEntry *)entryApplyingBandPreference:(RTWNetworkEntry *)entry {
+    if (entry.pinBssid) return entry; /* joinSavedEntry already chose the AP */
+    entry.pinBssid = NO;
+    if (![[NSUserDefaults standardUserDefaults] boolForKey:kDefaultsPrefer5GHz]) return entry;
+    if (!entry.ssid.length) return entry;
+    [self.stateLock lock];
+    NSArray<RTWNetworkEntry *> *raw = self.rawSurvey;
+    [self.stateLock unlock];
+    RTWNetworkEntry *best = nil;
+    for (RTWNetworkEntry *e in raw) {
+        if (e.channel <= 14 || !e.joinable) continue;
+        if (!rtlPrintableSsidEqual(e.ssid, entry.ssid)) continue;
+        if (e.rssiDbm < -75) continue;
+        if (!best || e.rssiDbm > best.rssiDbm) best = e;
+    }
+    if (!best) return entry;
+    best.pinBssid = YES;
+    RTWLog(@"prefer 5 GHz: \"%@\" pinned to channel %u (%d dBm)", best.ssid,
+           (unsigned)best.channel, (int)best.rssiDbm);
+    return best;
+}
+
+/* Which 5 GHz AP of `ssid` Prefer 5 GHz should pin (ported from the
+ * "mejoras" fork): the strongest 5 GHz AP at -75 dBm or better. nil = join by
+ * name (the kext then takes the strongest AP, usually a 2.4 GHz one). */
+- (nullable RTWNetworkEntry *)preferredAPForSsid:(NSString *)ssid
+                                       inRecords:(nullable NSArray<RTWNetworkEntry *> *)records {
+    if (![[NSUserDefaults standardUserDefaults] boolForKey:kDefaultsPrefer5GHz]) return nil;
+    RTWNetworkEntry *best = nil;
+    for (RTWNetworkEntry *e in records) {
+        if (!e.joinable || !rtlPrintableSsidEqual(e.ssid, ssid) || e.channel <= 14 || e.rssiDbm < -75) continue;
+        if (!best || e.rssiDbm > best.rssiDbm) best = e;
+    }
+    return best;
+}
+
+/* Automatic rejoins and Rejoin go through here instead of joining by name:
+ * pin the 5 GHz AP when the driver's survey has it; otherwise (at most once a
+ * minute) leave, sweep every channel until it shows up (up to 9 s) and then
+ * join; if it never shows up, join by name. (Fork logic, "mejoras".) */
+- (void)joinSavedEntry:(RTWNetworkEntry *)fallback
+            passphrase:(nullable NSString *)pass
+             automatic:(BOOL)automatic {
+    NSString *ssid = fallback.ssid;
+    void (^submit)(RTWNetworkEntry *) = ^(RTWNetworkEntry *target) {
+        if (automatic) {
+            [self submitAutoRejoin:target passphrase:pass];
+        } else {
+            [self submitJoin:target passphrase:pass];
+            if (pass.length > 0 && self.joinInFlightSsid.length) self.joinWatchSavedPass = YES;
+        }
+    };
+    [self.stateLock lock];
+    NSArray<RTWNetworkEntry *> *records = self.rawSurvey;
+    [self.stateLock unlock];
+    RTWNetworkEntry *pick = [self preferredAPForSsid:ssid inRecords:records];
+    if (pick) {
+        pick.pinBssid = YES;
+        RTWLog(@"rejoin \"%@\": pinning channel %u (%d dBm, 5 GHz preferred)", ssid, pick.channel, (int)pick.rssiDbm);
+        submit(pick);
+        return;
+    }
+    NSTimeInterval now = [NSDate timeIntervalSinceReferenceDate];
+    if (![[NSUserDefaults standardUserDefaults] boolForKey:kDefaultsPrefer5GHz] ||
+        now - self.lastPreferSweepAt < 60.0) {
+        submit(fallback);
+        return;
+    }
+    self.lastPreferSweepAt = now;
+    self.scanDetourSsid = ssid;
+    RTWLog(@"rejoin \"%@\": no 5 GHz AP in the driver's survey - sweeping first", ssid);
+    dispatch_async(self.workQueue, ^{
+        NSString *detail = nil;
+        [self.driver disconnectFromNetwork:&detail]; /* clears the kext's join guard so it sweeps */
+        [NSThread sleepForTimeInterval:1.0];
+        [self performScan];
+        RTWNetworkEntry *found = nil;
+        for (int i = 0; i < 13 && !found; i++) {
+            [NSThread sleepForTimeInterval:0.7];
+            if (!rtlPrintableSsidEqual(self.scanDetourSsid, ssid)) return;
+            found = [self preferredAPForSsid:ssid inRecords:[self.driver surveyRecords:NULL]];
+        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (!rtlPrintableSsidEqual(self.scanDetourSsid, ssid) || self.userDisconnected) return;
+            self.scanDetourSsid = nil;
+            if (found) {
+                found.pinBssid = YES;
+                RTWLog(@"rejoin \"%@\": sweep found channel %u (%d dBm) - pinning it", ssid, found.channel, (int)found.rssiDbm);
+            } else {
+                RTWLog(@"rejoin \"%@\": sweep did not find a 5 GHz AP - joining by name", ssid);
+            }
+            submit(found ?: fallback);
+        });
+    });
+}
+
+- (void)togglePrefer5GHz:(NSMenuItem *)sender {
+    NSUserDefaults *d = [NSUserDefaults standardUserDefaults];
+    [d setBool:![d boolForKey:kDefaultsPrefer5GHz] forKey:kDefaultsPrefer5GHz];
 }
 
 - (void)submitJoin:(RTWNetworkEntry *)entry passphrase:(nullable NSString *)pass {
     /* 8.8.5: any join the user starts (a network picked in the menu, Rejoin,
      * Reconnect USB WiFi) ends the Disconnect state. */
     self.userDisconnected = NO;
+    self.scanDetourSsid = nil; /* a join ends the full-sweep detour */
     /* v8.7.13: the 20 s "driver settle" gate is REVERTED - it was the
      * timer fix the user rejected. The kext now restarts its station and
      * clears a halted RX pipe on every join request (driver 1.0.7), so a
@@ -2038,6 +2165,7 @@ static BOOL rtlPrintableSsidEqual(NSString *a, NSString *b) {
     /* Arm the join watch BEFORE the driver call so any poll tick running
      * alongside this submit sees the in-flight window and the monitor
      * owns the tick (no duplicate stream mid-handshake). */
+    entry = [self entryApplyingBandPreference:entry];
     [self noteJoinSubmittedForEntry:entry passphrase:pass];
     NSString *detail = nil;
     BOOL ok = [self.driver joinNetwork:entry passphrase:pass error:&detail];
